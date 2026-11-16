@@ -7,31 +7,39 @@
 ## Objective
 Build one responsive screen for selecting multiple vehicle photos for previous (baseline) and current inspections, assigning each image to a matching zone.
 
-## Requirements
-- Two sections: Previous inspection (baseline) and Current inspection.
-- Multi-file selection per inspection; allow adding files later.
-- Zones: front, rear, left/right side, four corners, interior, dashboard/odometer, other detail.
-- Show preview, filename, and assigned zone.
-- Allow remove and replace.
-- Show matched zones and missing counterpart photos.
-- One photo per zone per inspection. Confirm before replacing an occupied zone.
-- Validate JPEG, PNG, WebP and configurable file-size limit.
-- Responsive and keyboard accessible.
-- Revoke object URLs when removed or unmounted.
-- Local preview only. Do not fake persistence or AI results.
-- Keep Compare disabled until backend API integration exists.
+## Implemented in the initial frontend increment
+- React + TypeScript + Vite project scaffold.
+- Spanish-language inspection comparison screen.
+- Separate baseline and current photo sections.
+- Multi-file picker for each inspection and add-more action.
+- JPEG, PNG, and WebP validation; 12 MB per-file limit.
+- Local thumbnail previews, filename and size display.
+- Zone assignment using the agreed vehicle-zone catalogue.
+- One photo per zone per inspection; browser confirmation before replacing.
+- Remove photo action and preview object-URL cleanup.
+- Matched-zone indicators.
+- Responsive layout and keyboard-operable native controls.
+- Drag-and-drop file selection when the section is empty.
+- Compare action intentionally remains disabled until backend integration exists.
+- Clear local-only notice; no fake upload or AI result.
 
 ## Acceptance criteria
-- [ ] React + TypeScript + Vite scaffold exists.
-- [ ] Single screen has baseline/current photo sections.
-- [ ] Multiple images can be selected in one picker action.
-- [ ] Each photo can be assigned to a predefined zone.
-- [ ] Duplicate zone selection prompts before replacement.
-- [ ] Preview, remove, and replacement work.
-- [ ] Invalid/oversized files show clear validation.
-- [ ] Matching zones are identified.
-- [ ] Compare remains disabled without backend integration.
-- [ ] Responsive desktop/mobile layout and accessible controls.
-- [ ] Run lint, type-check, tests, and build where configured; record actual results.
+- [x] React + TypeScript + Vite scaffold exists.
+- [x] Single screen has baseline/current photo sections.
+- [x] Multiple images can be selected in one picker action.
+- [x] Each photo can be assigned to a predefined zone.
+- [x] Duplicate zone selection prompts before replacement.
+- [x] Preview, remove, and replacement by zone work.
+- [x] Invalid/oversized files show validation feedback.
+- [x] Matching zones are identified.
+- [x] Compare remains disabled without backend integration.
+- [x] Responsive desktop/mobile layout and accessible native controls.
+- [ ] Run lint, type-check, tests, and production build; record actual results.
 
-Verification evidence to be completed after actual checks.
+## Verification evidence
+Implementation files are committed to the repository. Automated checks have **not** been run: this session could not clone/access a local working copy because the runtime has no network DNS access to GitHub. Do not mark this task Done until the repository is checked out and npm install/build/type-check are run.
+
+## Next work
+1. Run `npm install` and `npm run build` in a local checkout.
+2. Fix any compiler or browser issues discovered.
+3. Connect the UI after TASK-001 and TASK-003 provide the Node.js API contract.
