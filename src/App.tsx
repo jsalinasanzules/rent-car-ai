@@ -1,8 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
-  AlertCircle, ArrowDown, ArrowLeftRight, Camera, Check, CheckCircle2,
-  ChevronDown, Clock3, ImagePlus, Info, Layers3, Plus, RefreshCw,
-  ShieldCheck, Sparkles, Trash2, UploadCloud, X,
+  AlertCircle, ArrowLeftRight, Camera, Check, CheckCircle2,
+  ChevronDown, Clock3, Info, Layers3, Plus, ShieldCheck, Sparkles,
+  Trash2, UploadCloud, X,
 } from "lucide-react";
 
 type Side = "baseline" | "current";
@@ -40,15 +40,19 @@ function App() {
   const [baseline, setBaseline] = useState<Photo[]>([]);
   const [current, setCurrent] = useState<Photo[]>([]);
   const [notice, setNotice] = useState("");
-  const [activePicker, setActivePicker] = useState<Side>("baseline");
   const baselineInput = useRef<HTMLInputElement>(null);
   const currentInput = useRef<HTMLInputElement>(null);
+  const photosRef = useRef<Photo[]>([]);
 
-  const allPhotos = useMemo(() => [...baseline, ...current], [baseline, current]);
+  const allPhotos = [...baseline, ...current];
 
   useEffect(() => {
-    return () => allPhotos.forEach((photo) => URL.revokeObjectURL(photo.preview));
-  }, [allPhotos]);
+    photosRef.current = allPhotos;
+  }, [baseline, current]);
+
+  useEffect(() => {
+    return () => photosRef.current.forEach((photo) => URL.revokeObjectURL(photo.preview));
+  }, []);
 
   const matchedZones = useMemo(() => {
     const left = new Set(baseline.map((photo) => photo.zone).filter(Boolean));
@@ -116,7 +120,6 @@ function App() {
   }
 
   function openPicker(side: Side) {
-    setActivePicker(side);
     (side === "baseline" ? baselineInput : currentInput).current?.click();
   }
 
@@ -169,7 +172,15 @@ function App() {
         </div>
 
         {photos.length === 0 ? (
-          <button className="dropzone" onClick={() => openPicker(side)}>
+          <button
+            className="dropzone"
+            onClick={() => openPicker(side)}
+            onDragOver={(event) => event.preventDefault()}
+            onDrop={(event) => {
+              event.preventDefault();
+              addFiles(side, event.dataTransfer.files);
+            }}
+          >
             <span className="upload-icon"><UploadCloud size={23} /></span>
             <strong>Seleccionar fotografías</strong>
             <span>Arrastre imágenes aquí o haga clic para buscarlas</span>
