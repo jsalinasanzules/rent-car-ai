@@ -1,65 +1,35 @@
-# TASK-001 — Backend: Supabase Data Model, Private Storage, and Access Policies
+# TASK-001 — Backend: Node.js + TypeScript and Supabase Foundation
 
 **Status:** Ready  
 **Priority:** High  
-**Scope:** Supabase PostgreSQL + Supabase Storage; no AWS.
+**Scope:** Node.js + TypeScript API, Supabase PostgreSQL, private Supabase Storage.
 
 ## Objective
-
-Prepare secure persistence for vehicles, baseline/current inspections, inspection photos, comparisons, and AI findings.
+Create the trusted backend foundation and connect to Supabase using server-side environment variables.
 
 ## Work items
+1. Scaffold a separate Node.js + TypeScript backend application.
+2. Select a minimal HTTP framework after reviewing needs; document the decision.
+3. Load and validate environment variables at startup.
+4. Configure Supabase server client using SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY; keep the key server-only.
+5. Add .env.example with placeholders; never commit credentials.
+6. Add migrations for vehicles, inspections, inspection_images, comparisons, and comparison_findings.
+7. Create private Storage bucket vehicle-inspection-photos.
+8. Define authorization, ownership, RLS, and Storage rules; no permissive anonymous access.
+9. Add health endpoint and basic error handling.
+10. Add tests for configuration, schema, and access boundaries.
 
-1. Inspect the actual repository and choose the minimal Supabase project structure.
-2. Define the authentication/tenant ownership assumptions; request confirmation if still unspecified.
-3. Add migrations for:
-   - vehicles (only fields needed by prototype, VIN optional)
-   - inspections (vehicle, inspection type/date, owner/tenant, status)
-   - inspection_images (inspection, zone, bucket/object path, original filename, MIME type, size, dimensions)
-   - comparisons (baseline inspection, current inspection, processing status, overall result, timestamps)
-   - comparison_findings (comparison, zone, type, location description, description, severity, confidence estimate, human-review flag)
-4. Add private Storage bucket `vehicle-inspection-photos`.
-5. Define RLS policies and Storage policies based on the approved ownership model.
-6. Add constraints/indexes for valid inspection types, zones, result/status values, unique image per zone per inspection for MVP, and lookup paths where justified.
-7. Document local Supabase setup, migrations, upload limits, and cleanup of abandoned uploads.
-8. Add tests or reproducible verification steps for schema, RLS, and Storage access.
-
-## Suggested values
-
-Inspection type: `BASELINE`, `CURRENT`.
-
-Zone values: `front`, `rear`, `left_side`, `right_side`, `front_left_corner`, `front_right_corner`, `rear_left_corner`, `rear_right_corner`, `interior`, `dashboard`, `detail`.
-
-Processing status: `PENDING`, `PROCESSING`, `COMPLETED`, `FAILED`.
-
-Overall result: `NEW_DAMAGE`, `NO_CHANGE`, `INCONCLUSIVE`.
-
-Finding severity: `LOW`, `MEDIUM`, `HIGH`, `UNKNOWN`.
-
-## Security requirements
-
-- Bucket must be private.
-- Never expose Supabase secret/service-role keys to browser code.
-- Do not create unrestricted anonymous policies.
-- Do not treat client-provided inspection IDs or Storage paths as proof of ownership.
-- Enforce ownership in RLS and revalidate it in privileged Edge Functions.
-- If auth/tenant requirements remain unknown, keep real-user upload policies blocked rather than weakening security.
+## Expected backend variables
+PORT, SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, ANTHROPIC_API_KEY, CLAUDE_MODEL, CORS_ORIGIN.
+Frontend may use VITE_API_BASE_URL only. Never expose service-role or Anthropic keys through Vite variables.
 
 ## Acceptance criteria
+- [ ] Node.js + TypeScript backend starts with validated environment configuration.
+- [ ] Backend connects to Supabase using environment variables.
+- [ ] Migrations and private bucket setup are reproducible.
+- [ ] Ownership/security model is explicit and tested.
+- [ ] No secrets are committed or sent to browser.
+- [ ] No AWS or Supabase Edge Functions.
+- [ ] Actual verification results are documented.
 
-- [ ] Migrations define the minimum entities and constraints.
-- [ ] Storage bucket is private.
-- [ ] RLS and Storage policies enforce the approved ownership model.
-- [ ] Metadata stores object paths, not image binaries or public URLs.
-- [ ] One-image-per-zone pairing rule is enforced for the MVP.
-- [ ] Environment examples contain placeholders only.
-- [ ] No AWS dependency is introduced.
-- [ ] Verification commands and actual results are recorded.
-
-## Verification evidence
-
-_To be completed by the implementing agent._
-
-## Blockers
-
-Authentication provider/user model and tenant isolation are not yet specified. Do not invent permissive access policies.
+Authentication and tenant ownership must be agreed before real-user access policies are enabled.
