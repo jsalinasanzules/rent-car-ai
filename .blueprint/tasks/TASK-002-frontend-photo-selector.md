@@ -1,57 +1,66 @@
-# TASK-002 — Frontend: Multi-Photo Vehicle Shot Selector
+# TASK-002 — Frontend: One-Screen Baseline/Current Multi-Photo Selector
 
 **Status:** Ready  
 **Priority:** High  
-**Scope:** One focused screen; no AI analysis.
+**Scope:** One screen; no direct Claude API calls.
 
 ## Objective
 
-Build a simple, usable screen that lets an operator select multiple photographs of a vehicle and classify each photograph by vehicle view/shot type.
+Build one focused screen where an operator selects multiple vehicle photos for a previous (baseline) inspection and a current inspection, assigning each photo to a matching vehicle zone so the backend can compare them.
 
-## UI requirements
+## UI layout
 
-1. Show a clear page title and short instruction.
-2. Provide a predefined shot-type selector using these initial options:
-   - Front
-   - Rear
-   - Left side
-   - Right side
-   - Front-left corner
-   - Front-right corner
-   - Rear-left corner
-   - Rear-right corner
-   - Interior
-   - Dashboard / odometer
-   - Other detail
-3. Allow selecting multiple image files in one action where supported.
-4. Allow adding more photos in subsequent selections.
-5. Show a thumbnail preview for every selected photo.
-6. Show the assigned shot type for each photo.
-7. Allow removing a selected photo and replacing it.
-8. Validate image type and configurable file-size limit with clear user feedback.
-9. Provide an explicit save/upload action only if Supabase integration is available; otherwise keep the first UI increment local and clearly indicate that the selection has not been saved.
-10. Keep the layout responsive and accessible, including keyboard-operable controls and labels.
+- Page title and short explanation.
+- Two clearly separated sections or tabs:
+  - Previous inspection (baseline)
+  - Current inspection
+- Same predefined vehicle-zone catalogue in both sections:
+  - Front
+  - Rear
+  - Left side
+  - Right side
+  - Front-left corner
+  - Front-right corner
+  - Rear-left corner
+  - Rear-right corner
+  - Interior
+  - Dashboard / odometer
+  - Other detail
+- Each section supports selecting multiple image files in one action and adding more files later.
+- Each selected photo shows thumbnail, filename, and assigned zone.
+- Allow removing/replacing a photo.
+- Show which zones have a matching photo on both sides and are ready for comparison.
+- Show unmatched zones as incomplete; do not compare them.
+- Provide a Compare button, disabled until at least one valid matching zone exists and persistence/integration tasks are complete.
+- Display loading, completed, failed, and inconclusive states.
 
-## Interaction rules
+## MVP pairing rule
 
-- Do not force the user to select every shot type.
-- Support several photos in one inspection.
-- Do not silently overwrite an existing selection.
-- Do not assume one photo per shot type unless confirmed.
-- Revoke temporary browser object URLs when previews are removed or the component is disposed.
-- Preserve original image files; no image transformations are required.
+Support one photo per zone per inspection for deterministic pairing. If the user selects another photo for a zone already occupied, ask whether to replace it; do not silently overwrite. Multiple photos across different zones are supported.
+
+## Validation and UX
+
+- Accept supported image formats (JPEG, PNG, WebP; confirm compatibility).
+- Enforce configurable file-size and image-count limits.
+- Preserve original files.
+- Do not require every zone to be filled.
+- Revoke browser object URLs when previews are removed or the component is disposed.
+- Responsive and keyboard accessible.
+- Clearly distinguish local preview from saved/uploaded state.
+- Do not expose API keys or call Anthropic directly from the browser.
 
 ## Acceptance criteria
 
-- [ ] A single screen supports selecting multiple vehicle photos.
-- [ ] The user can add photos in more than one selection action.
-- [ ] Each photo can be assigned a shot type.
-- [ ] Thumbnails and filenames are visible.
-- [ ] The user can remove and replace individual photos.
-- [ ] Unsupported files and oversized files are rejected with clear messages.
-- [ ] The screen works at desktop and mobile viewport sizes.
-- [ ] No AWS, Claude API, image-processing, or AI inference dependency is added.
-- [ ] Relevant tests, lint, type-check, and build commands are run where available.
+- [ ] One screen contains baseline and current photo sections.
+- [ ] User can select multiple photos for each inspection and add more later.
+- [ ] Each photo is assigned to a predefined zone.
+- [ ] Same-zone pairs are clearly identified.
+- [ ] Duplicate zone selection prompts for replacement.
+- [ ] Thumbnails, filenames, remove/replace actions work.
+- [ ] Invalid/oversized files show clear feedback.
+- [ ] Compare action is only enabled when valid pairs exist and backend integration is available.
+- [ ] Desktop and mobile layouts work.
+- [ ] Relevant tests, lint, type-check, and build checks are run.
 
 ## Verification evidence
 
@@ -59,4 +68,4 @@ _To be completed by the implementing agent._
 
 ## Notes
 
-The repository was empty when this task was created. Inspect the actual stack before scaffolding; do not assume React, Angular, Next.js, or another framework without checking or confirming.
+Inspect the repository before selecting/scaffolding a frontend framework. No framework is assumed.
