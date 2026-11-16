@@ -8,7 +8,7 @@
 Build one responsive screen for selecting multiple vehicle photos for previous (baseline) and current inspections, assigning each image to a matching zone.
 
 ## Implemented in the initial frontend increment
-- React + TypeScript + Vite project scaffold.
+- React + TypeScript + Vite project scaffold under `Fronted/`.
 - Spanish-language inspection comparison screen.
 - Separate baseline and current photo sections.
 - Multi-file picker for each inspection and add-more action.
@@ -37,7 +37,7 @@ Build one responsive screen for selecting multiple vehicle photos for previous (
 - [ ] Run lint, type-check, tests, and production build; record actual results.
 
 ## Verification evidence
-Implementation files are committed to the repository. Automated checks have **not** been run: this session could not clone/access a local working copy because the runtime has no network DNS access to GitHub. Do not mark this task Done until the repository is checked out and npm install/build/type-check are run.
+Implementation files are committed under `Fronted/`. Automated checks have **not** been run: this session could not clone/access a local working copy because the runtime has no network DNS access to GitHub. Do not mark this task Done until the repository is checked out and npm install/build/type-check are run.
 
 ## Next work
 1. Run `npm install` and `npm run build` in a local checkout.
