@@ -1,62 +1,65 @@
-# TASK-001 — Backend: Supabase Foundation and Photo Metadata
+# TASK-001 — Backend: Supabase Data Model, Private Storage, and Access Policies
 
 **Status:** Ready  
 **Priority:** High  
-**Scope:** Supabase PostgreSQL + Supabase Storage only.
+**Scope:** Supabase PostgreSQL + Supabase Storage; no AWS.
 
 ## Objective
 
-Prepare the backend data/storage foundation for vehicle inspection photos without introducing AWS or AI processing.
+Prepare secure persistence for vehicles, baseline/current inspections, inspection photos, comparisons, and AI findings.
 
 ## Work items
 
-1. Inspect the repository and confirm the selected application/runtime structure before adding backend code.
-2. Document the required Supabase project configuration and environment variables using placeholders only.
-3. Design a minimal migration for inspection sessions and photo metadata. Keep the schema small and aligned with the current photo-selector workflow.
-4. Add a private Storage bucket migration or reproducible setup instructions for `vehicle-inspection-photos`.
-5. Define RLS policies for database records and Storage objects.
-6. Ensure object paths are scoped to the owning inspection and authenticated principal/tenant, once the auth model is known.
-7. Document upload constraints and cleanup behavior for failed or abandoned uploads.
-8. Add tests or verification steps for schema, RLS, and Storage access.
+1. Inspect the actual repository and choose the minimal Supabase project structure.
+2. Define the authentication/tenant ownership assumptions; request confirmation if still unspecified.
+3. Add migrations for:
+   - vehicles (only fields needed by prototype, VIN optional)
+   - inspections (vehicle, inspection type/date, owner/tenant, status)
+   - inspection_images (inspection, zone, bucket/object path, original filename, MIME type, size, dimensions)
+   - comparisons (baseline inspection, current inspection, processing status, overall result, timestamps)
+   - comparison_findings (comparison, zone, type, location description, description, severity, confidence estimate, human-review flag)
+4. Add private Storage bucket `vehicle-inspection-photos`.
+5. Define RLS policies and Storage policies based on the approved ownership model.
+6. Add constraints/indexes for valid inspection types, zones, result/status values, unique image per zone per inspection for MVP, and lookup paths where justified.
+7. Document local Supabase setup, migrations, upload limits, and cleanup of abandoned uploads.
+8. Add tests or reproducible verification steps for schema, RLS, and Storage access.
 
-## Suggested metadata
+## Suggested values
 
-A photo record may include:
-- `id`
-- `inspection_id`
-- `shot_type`
-- `bucket_id`
-- `object_path`
-- `original_filename`
-- `mime_type`
-- `file_size_bytes`
-- `created_at`
+Inspection type: `BASELINE`, `CURRENT`.
 
-Use foreign keys, constraints, and indexes only where justified. Store object paths, not public URLs or image binaries.
+Zone values: `front`, `rear`, `left_side`, `right_side`, `front_left_corner`, `front_right_corner`, `rear_left_corner`, `rear_right_corner`, `interior`, `dashboard`, `detail`.
+
+Processing status: `PENDING`, `PROCESSING`, `COMPLETED`, `FAILED`.
+
+Overall result: `NEW_DAMAGE`, `NO_CHANGE`, `INCONCLUSIVE`.
+
+Finding severity: `LOW`, `MEDIUM`, `HIGH`, `UNKNOWN`.
 
 ## Security requirements
 
 - Bucket must be private.
-- Never expose Supabase service-role credentials to frontend code.
-- Do not create unrestricted anonymous insert/select/update/delete policies.
-- Do not treat a client-provided inspection ID or Storage path as proof of ownership.
-- Policies must enforce the approved user/tenant ownership model.
-- If authentication/tenant requirements are still unknown, implement the schema in a way that can be reviewed, document the missing decision, and leave real-user upload policies blocked rather than weakening security.
+- Never expose Supabase secret/service-role keys to browser code.
+- Do not create unrestricted anonymous policies.
+- Do not treat client-provided inspection IDs or Storage paths as proof of ownership.
+- Enforce ownership in RLS and revalidate it in privileged Edge Functions.
+- If auth/tenant requirements remain unknown, keep real-user upload policies blocked rather than weakening security.
 
 ## Acceptance criteria
 
-- [ ] Supabase migration(s) or reproducible setup documentation are committed.
-- [ ] Database schema stores metadata and Storage object paths, not binary images.
+- [ ] Migrations define the minimum entities and constraints.
 - [ ] Storage bucket is private.
-- [ ] RLS and Storage policy design is documented and tested against the confirmed auth model.
-- [ ] Environment variable example contains placeholders only.
-- [ ] No AWS dependency or Claude API integration is introduced.
-- [ ] Verification commands and actual results are recorded below.
+- [ ] RLS and Storage policies enforce the approved ownership model.
+- [ ] Metadata stores object paths, not image binaries or public URLs.
+- [ ] One-image-per-zone pairing rule is enforced for the MVP.
+- [ ] Environment examples contain placeholders only.
+- [ ] No AWS dependency is introduced.
+- [ ] Verification commands and actual results are recorded.
 
 ## Verification evidence
 
 _To be completed by the implementing agent._
 
-## Notes / blockers
+## Blockers
 
-Authentication provider, tenant model, maximum file size, and maximum photos per inspection are not yet specified. Do not invent production access policies.
+Authentication provider/user model and tenant isolation are not yet specified. Do not invent permissive access policies.
