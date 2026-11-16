@@ -62,6 +62,7 @@ function App() {
 
   const assignedCount = allPhotos.filter((photo) => photo.zone).length;
   const comparisonReady = matchedZones.size > 0;
+  const backendIntegrationReady = false;
 
   function updateSide(side: Side, updater: (photos: Photo[]) => Photo[]) {
     const setter = side === "baseline" ? setBaseline : setCurrent;
@@ -276,7 +277,7 @@ function App() {
 
         <footer className="page-actions">
           <span className="local-disclaimer"><Info size={14} /> Prototipo local: las imágenes aún no se han guardado.</span>
-          <button className="compare-button" disabled={!comparisonReady || true} title="Disponible cuando se implemente la API backend">
+          <button className="compare-button" disabled={!comparisonReady || !backendIntegrationReady} title="Disponible cuando se implemente la API backend">
             <Sparkles size={17} /> Comparar con IA <span className="button-soon">Próximamente</span>
           </button>
         </footer>
