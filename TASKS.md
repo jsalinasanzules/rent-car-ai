@@ -7,6 +7,12 @@ Current milestone: Vehicle photo comparison prototype.
 - [ ] TASK-003 — Backend integration: Node.js API for photo upload and metadata — Blocked until TASK-001. Details: .blueprint/tasks/TASK-003-supabase-integration.md
 - [ ] TASK-004 — Backend AI: Claude Vision comparison — Blocked until TASK-001 and TASK-003. Details: .blueprint/tasks/TASK-004-claude-vision-comparison.md
 
+## Directory rules
+- Frontend implementation and configuration: `Fronted/`.
+- Backend implementation and configuration: `Backend/`.
+- Shared docs: `docs/`; task specifications: `.blueprint/tasks/`.
+- No frontend/backend implementation files at repository root.
+
 ## Execution order
 1. TASK-002 local frontend (in progress).
 2. TASK-001 Node.js backend foundation, Supabase schema, private Storage.
