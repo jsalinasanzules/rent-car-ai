@@ -1,13 +1,20 @@
 # MVP Architecture — React + Node.js + Supabase + Claude Vision
 
+## Repository boundaries
+- `Fronted/`: all React + TypeScript + Vite application code and frontend configuration.
+- `Backend/`: all Node.js + TypeScript API code, Supabase integration, migrations, backend tests, and server configuration.
+- `docs/`: shared architecture documentation.
+- Root and `.blueprint/`: shared AI-agent instructions, task board, and project memory.
+Never place app implementation files at repository root. Preserve exact folder names `Fronted` and `Backend`.
+
 ## Components
-- Frontend: React + TypeScript + Vite.
-- Backend: Node.js + TypeScript HTTP API (separate application).
+- Frontend: React + TypeScript + Vite in `Fronted/`.
+- Backend: Node.js + TypeScript HTTP API in `Backend/`.
 - Database: Supabase PostgreSQL.
 - Files: private Supabase Storage bucket vehicle-inspection-photos.
 - Vision: Anthropic Claude Messages API.
 
-Supabase and Anthropic connections are made from the Node.js backend using environment variables. The frontend communicates only with the Node.js API. Do not use Supabase Edge Functions for application backend logic.
+Supabase and Anthropic connections are made from the backend using server-side environment variables. The frontend communicates only with the Node.js API. Do not use Supabase Edge Functions for application backend logic.
 
 ## Flow
 1. Operator selects baseline/current photos in React.
@@ -20,19 +27,16 @@ Supabase and Anthropic connections are made from the Node.js backend using envir
 8. Backend validates the model response, persists results, and returns normalized JSON.
 9. Frontend displays findings and human-review warnings.
 
-## Pairing
-Compare only same-vehicle/same-zone photos. MVP allows one photo per zone per inspection. Missing pairs are not submitted. Similar camera angle, distance, framing, and lighting improve reliability.
-
 ## Environment variables
-Backend-only: PORT, SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, ANTHROPIC_API_KEY, CLAUDE_MODEL, CORS_ORIGIN.
-Frontend: VITE_API_BASE_URL.
+- Backend-only in `Backend/.env.example`: PORT, SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, ANTHROPIC_API_KEY, CLAUDE_MODEL, CORS_ORIGIN.
+- Frontend in `Fronted/.env.example`: VITE_API_BASE_URL.
 Supabase service-role and Anthropic keys must never be exposed to browser code or VITE_ variables. Use placeholder examples only.
 
 ## Supabase
 Use PostgreSQL for vehicles, inspections, image metadata, comparisons, and findings. Use private Storage. Store object paths and metadata, not image binaries in rows. Enforce ownership in Node.js API and database policies. Reject arbitrary external URLs.
 
 ## Claude Vision
-Invoke Anthropic only from Node.js. Label image A as baseline and image B as current. Compare same-zone pairs, ignore lighting/reflections/shadows/dirt/camera differences, and return INCONCLUSIVE when unreliable. Validate output before persistence. Confidence is uncalibrated; findings require human review. No bounding boxes in MVP.
+Invoke Anthropic only from Node.js backend. Label image A as baseline and image B as current. Compare same-zone pairs, ignore lighting/reflections/shadows/dirt/camera differences, and return INCONCLUSIVE when unreliable. Validate output before persistence. Confidence is uncalibrated; findings require human review. No bounding boxes in MVP.
 
 ## Execution
 Start synchronously for a small number of pairs. Add a queue only if measured latency/volume justify it. Use idempotency and cost limits.
