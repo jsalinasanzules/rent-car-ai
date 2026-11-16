@@ -4,53 +4,62 @@ These instructions apply to every AI coding agent working in this repository, in
 
 ## Required context
 
-At the start of a task:
+At the start of a task, read:
+1. `PROJECT_CONTEXT.md`
+2. `docs/architecture/MVP.md`
+3. `TASKS.md`
+4. The assigned task file and its dependencies.
 
-1. Read `PROJECT_CONTEXT.md`.
-2. Read `docs/architecture/MVP.md`.
-3. Read `TASKS.md` and the specific task file assigned.
-4. Inspect the current repository and its actual framework, scripts, dependencies, and conventions before proposing or changing implementation.
+Inspect the actual repository, framework, scripts, dependencies, and conventions before changing implementation. Do not assume a framework or runtime that is not present.
 
-Do not assume a framework, runtime, folder structure, authentication system, or deployment provider that is not present in the repository.
+## Product scope
 
-## Project boundaries
+- The MVP has one vehicle inspection comparison screen.
+- The operator selects multiple vehicle shots for a previous (baseline) inspection and a current inspection.
+- Compare only photos representing the same vehicle zone/shot type.
+- The first AI implementation uses Anthropic Claude Vision through the Messages API.
+- Supabase PostgreSQL stores metadata and results; Supabase Storage stores original images in a private bucket.
+- Supabase Edge Functions are the trusted server-side boundary for Claude API calls.
+- Do not use AWS.
+- Do not add OpenCV, image enhancement, queues, PDF generation, partner webhooks, or a production multi-tenant billing system in this MVP.
 
-- The current milestone is a vehicle photo-selection prototype.
-- Supabase is the selected provider for PostgreSQL and object storage.
-- Do not add AWS services or AWS dependencies.
-- Do not implement Claude/LLM calls, damage detection, OpenCV, image enhancement, queues, webhooks, PDF reports, or comparison algorithms in this milestone.
-- Preserve original uploaded images. Do not apply destructive transformations.
-- A user must be able to select multiple vehicle shots in one inspection workflow.
-- Use a controlled catalogue of shot types; avoid free-form labels where a predefined option is appropriate.
+## AI analysis rules
 
-## Engineering rules
+- Claude API calls must run server-side, never from browser code.
+- Keep `ANTHROPIC_API_KEY` in Supabase Edge Function secrets. Never commit real secrets or expose them to the frontend.
+- The browser sends application-owned image IDs/object references, never arbitrary external image URLs.
+- The Edge Function validates the authenticated user's access to both inspections and all referenced images before generating short-lived access to private images.
+- Use the configured Claude model via environment/configuration; do not scatter model identifiers through the codebase.
+- Ask Claude to compare previous vs current photos of the same zone, ignore lighting/reflections/shadows/camera differences, and return `INCONCLUSIVE` when comparison is unreliable.
+- Treat model confidence as an estimate, not a calibrated probability.
+- Findings are suggestions for human review, not definitive insurance, safety, or repair decisions.
+- Do not claim precise pixel-level localization or bounding boxes unless separately validated.
+- Validate and parse model output against a strict application schema before storing or returning it.
+- Handle provider timeouts, rate limits, malformed output, and errors without marking the comparison successful.
 
-- Prefer small, reviewable changes that follow existing project conventions.
-- Do not add dependencies when platform or existing project functionality is sufficient.
-- Never commit secrets, service-role keys, API keys, access tokens, or populated environment files.
-- Use environment variable examples with placeholders only.
-- The Supabase service-role key must never be exposed to browser code.
-- Use a private Storage bucket and enforce access through Supabase policies. Never make inspection images public merely to simplify development.
-- Validate file type and size on the client for usability and enforce security-sensitive validation at the trusted boundary.
-- Do not accept arbitrary external image URLs from clients. Use storage object paths/IDs owned by the application.
-- Avoid logging image contents, credentials, signed URLs, or personal data.
-- Do not invent successful test results. Run checks and report their actual outcome.
+## Supabase and security rules
 
-## Task workflow
+- Use a private Storage bucket.
+- Use Row Level Security for database records and Storage policies.
+- Never expose Supabase secret/service-role keys in browser bundles.
+- Keep `ANTHROPIC_API_KEY` only in Edge Function secrets.
+- Do not accept arbitrary external URLs from clients (avoid SSRF).
+- Use application-owned IDs and object paths, and verify ownership on the server.
+- Generate short-lived signed image URLs server-side only if using URL image sources with Claude.
+- Validate MIME type, file size, image count, inspection ownership, and zone pairing.
+- Preserve originals; do not destructively transform uploaded images.
+- Avoid logging image data, secrets, signed URLs, or personal data.
 
-- Work only on the requested task and its dependencies.
-- Read the full acceptance criteria before coding.
-- If a required product or architecture decision is missing, document the uncertainty and ask before making a costly or hard-to-reverse choice.
-- Update the task file and `TASKS.md` when work is completed or blocked.
-- Record implementation notes, commands executed, test results, and remaining limitations.
-- Do not mark a task complete while acceptance criteria remain unmet.
+## Engineering workflow
+
+- Make small, reviewable changes and follow existing conventions.
+- Work only on the assigned task and its dependencies.
+- Do not add dependencies when existing platform functionality is sufficient.
+- Ask before making costly or hard-to-reverse decisions.
+- Update task files and `TASKS.md` as work progresses.
+- Record commands run, actual test/build results, setup steps, and limitations.
 - Do not commit or push unless the user explicitly asks.
 
 ## Definition of done
 
-A task is complete only when:
-- Its acceptance criteria are met.
-- Relevant tests, linting, type checks, or build checks have been run where available.
-- Any required Supabase SQL/migrations are included in version control.
-- Documentation and task status reflect the actual implementation.
-- Remaining risks or manual setup steps are documented.
+A task is complete only when its acceptance criteria are met, relevant checks have been run, security requirements are verified, and documentation reflects the actual implementation.
