@@ -1,118 +1,41 @@
-# MVP Architecture — Vehicle Inspection Comparison with Claude Vision
+# MVP Architecture — React + Node.js + Supabase + Claude Vision
 
-## Goal
+## Components
+- Frontend: React + TypeScript + Vite.
+- Backend: Node.js + TypeScript HTTP API (separate application).
+- Database: Supabase PostgreSQL.
+- Files: private Supabase Storage bucket vehicle-inspection-photos.
+- Vision: Anthropic Claude Messages API.
 
-Deliver one screen where an operator selects multiple vehicle photographs for a previous inspection and a current inspection. Store originals in private Supabase Storage, compare matching vehicle zones with Claude Vision, and display structured potential changes.
+Supabase and Anthropic connections are made from the Node.js backend using environment variables. The frontend communicates only with the Node.js API. Do not use Supabase Edge Functions for application backend logic.
 
-## High-level flow
+## Flow
+1. Operator selects baseline/current photos in React.
+2. Each photo is assigned to a predefined vehicle zone.
+3. Frontend validates type and size for user feedback.
+4. Frontend sends files and metadata to Node.js API.
+5. Backend validates, uploads originals to private Supabase Storage, and persists metadata.
+6. Frontend requests comparison using application IDs.
+7. Backend retrieves private images and calls Claude Vision.
+8. Backend validates the model response, persists results, and returns normalized JSON.
+9. Frontend displays findings and human-review warnings.
 
-1. User selects baseline and current inspections (or creates the two inspection records for the prototype).
-2. User selects multiple images for each inspection and assigns a predefined vehicle zone.
-3. Frontend validates supported image formats and configurable file-size/count limits.
-4. Original images are uploaded to a private Supabase Storage bucket.
-5. Image metadata and Storage object paths are saved in PostgreSQL.
-6. User starts comparison.
-7. Frontend calls a protected Supabase Edge Function using application IDs only.
-8. Edge Function validates user access and pairs images by the same zone.
-9. Edge Function obtains short-lived access to the private images and calls Anthropic Claude Messages API.
-10. Function validates the response against the application schema, persists results, and returns status/findings.
-11. Frontend displays findings and marks uncertain comparisons as inconclusive.
+## Pairing
+Compare only same-vehicle/same-zone photos. MVP allows one photo per zone per inspection. Missing pairs are not submitted. Similar camera angle, distance, framing, and lighting improve reliability.
 
-## Image pairing
+## Environment variables
+Backend-only: PORT, SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, ANTHROPIC_API_KEY, CLAUDE_MODEL, CORS_ORIGIN.
+Frontend: VITE_API_BASE_URL.
+Supabase service-role and Anthropic keys must never be exposed to browser code or VITE_ variables. Use placeholder examples only.
 
-- Compare baseline and current images only when they refer to the same vehicle and same zone.
-- For the first iteration, support one image per zone per inspection to keep pairing deterministic.
-- If one side is missing a matching zone, do not ask Claude to infer a comparison; mark that zone as `INCONCLUSIVE` or omit it with an explicit reason.
-- Similar camera angle, distance, framing, and lighting improve reliability.
-- Do not compare images of different vehicle zones.
-- Do not claim exact image registration or pixel-level localization.
+## Supabase
+Use PostgreSQL for vehicles, inspections, image metadata, comparisons, and findings. Use private Storage. Store object paths and metadata, not image binaries in rows. Enforce ownership in Node.js API and database policies. Reject arbitrary external URLs.
 
-## Supabase responsibilities
+## Claude Vision
+Invoke Anthropic only from Node.js. Label image A as baseline and image B as current. Compare same-zone pairs, ignore lighting/reflections/shadows/dirt/camera differences, and return INCONCLUSIVE when unreliable. Validate output before persistence. Confidence is uncalibrated; findings require human review. No bounding boxes in MVP.
 
-### Storage
+## Execution
+Start synchronously for a small number of pairs. Add a queue only if measured latency/volume justify it. Use idempotency and cost limits.
 
-- Private bucket: `vehicle-inspection-photos`.
-- Upload original image files; do not store base64 in PostgreSQL.
-- Object paths must be unique and scoped to inspection IDs.
-- Do not use public object URLs.
-- Browser uploads only through authenticated Supabase client and approved policies.
-
-### Database
-
-Store:
-- vehicle and inspection records
-- image metadata and object paths
-- comparison records and processing status
-- normalized findings returned by Claude
-
-Suggested statuses:
-- Processing: `PENDING`, `PROCESSING`, `COMPLETED`, `FAILED`
-- Result: `NEW_DAMAGE`, `NO_CHANGE`, `INCONCLUSIVE`
-
-Use RLS and Storage policies aligned with the confirmed authentication/tenant model.
-
-## Claude Vision integration
-
-- Use Anthropic Messages API with vision-capable Claude model.
-- Call it only from a Supabase Edge Function.
-- Store `ANTHROPIC_API_KEY` in Supabase Edge Function secrets; configure the model through `CLAUDE_MODEL`.
-- The frontend sends IDs, not arbitrary URLs or raw Anthropic credentials.
-- Function verifies that both images belong to the authorized vehicle/inspections and matching zone.
-- Function generates short-lived signed URLs or fetches the private objects server-side for base64 encoding.
-- Label image roles explicitly: **Image A = previous/baseline**, **Image B = current**.
-- Prompt Claude to report only visible changes that may be new damage, ignore lighting/reflections/shadows/camera differences, and return `INCONCLUSIVE` if comparison is unreliable.
-- Parse and validate structured JSON before persistence. Never trust unvalidated model output.
-- Record model identifier and prompt version for reproducibility; avoid storing unnecessary raw image data or sensitive provider payloads.
-
-### Expected analysis contract
-
-Overall result:
-- `NEW_DAMAGE`
-- `NO_CHANGE`
-- `INCONCLUSIVE`
-
-Finding:
-- `type`
-- `zone`
-- `location_description`
-- `description`
-- `severity`: `LOW` | `MEDIUM` | `HIGH` | `UNKNOWN`
-- `confidence`: number from 0 to 1 (model estimate, not calibrated)
-- `requires_human_review`: boolean (true by default)
-
-Do not include bounding boxes in the first MVP unless a separate validation task establishes their reliability. Do not produce an automatic insurance/repair decision.
-
-## Error handling and execution model
-
-- Start with synchronous Edge Function execution for a small number of photo pairs.
-- Limit number and size of images per request to stay within provider and Edge Function limits.
-- Persist `PROCESSING` before inference and set `COMPLETED` or `FAILED` after validated processing.
-- Handle provider timeout, rate limit, invalid response, missing image, and storage errors.
-- Do not blindly retry paid inference requests; use idempotency and clear retry behavior.
-- Keep the analysis service modular so a queue/worker can be added later if real usage requires it.
-
-## Security
-
-- Private Storage bucket and RLS.
-- Validate user access to both inspections and every image in the Edge Function.
-- Never expose service-role/secret keys or Anthropic key in browser code.
-- Never accept client-supplied arbitrary external URLs.
-- Generate short-lived signed URLs server-side only.
-- Enforce upload MIME type, size, count, and zone rules.
-- Do not log secrets, signed URLs, or image contents.
-
-## Explicitly out of scope
-
-- AWS.
-- OpenCV, Sharp, image enhancement, image registration, or destructive image transforms.
-- Background queues and distributed workers.
-- PDF reports, partner webhooks, multi-tenant API-key products, and production billing.
-- Automatic repair estimates, insurance decisions, or vehicle safety certification.
-
-## Open decisions
-
-1. Authentication and tenant ownership model.
-2. Maximum number of images and maximum file size.
-3. Confirm one image per zone per inspection for deterministic MVP pairing.
-4. Select Claude model and cost ceiling.
-5. Define a small labeled test set and human-review procedure.
+## Out of scope
+AWS, Supabase Edge Functions, OpenCV, image enhancement, queues, PDF reports, partner webhooks, automatic repair/insurance decisions.
