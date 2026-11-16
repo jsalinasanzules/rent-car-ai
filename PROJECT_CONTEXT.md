@@ -3,6 +3,14 @@
 ## Product goal
 Compare photos of the same vehicle across previous and current inspections and identify potential new visible damage.
 
+## Mandatory repository layout
+- `Fronted/`: React + TypeScript + Vite frontend only.
+- `Backend/`: Node.js + TypeScript backend only.
+- `docs/`: shared architecture and product documentation.
+- `.blueprint/`: AI task specifications.
+- Root: shared agent instructions, README, project context, memory, and task board.
+Never put frontend or backend implementation files at repository root. Preserve the requested spelling `Fronted`.
+
 ## MVP screen
 One React + TypeScript screen contains two photo collections: Previous inspection (baseline) and Current inspection. The operator selects multiple photos, assigns each to a predefined zone, previews, removes, and replaces them.
 
@@ -11,18 +19,18 @@ Zones: front, rear, left side, right side, front-left corner, front-right corner
 Allow one photo per zone per inspection for deterministic pairing. Ask before replacing an occupied zone. A zone is comparable only when both inspections contain a photo for it.
 
 ## Fixed technology decisions
-- Frontend: React + TypeScript + Vite.
-- Backend: Node.js + TypeScript, separate HTTP API.
+- Frontend: React + TypeScript + Vite in `Fronted/`.
+- Backend: Node.js + TypeScript, separate HTTP API in `Backend/`.
 - Database: Supabase PostgreSQL.
 - Files: private Supabase Storage bucket vehicle-inspection-photos.
 - AI: Anthropic Claude Vision via Messages API.
-- Supabase and Anthropic integrations are configured in the Node.js backend using environment variables.
+- Supabase and Anthropic connections are made from the Node.js backend using environment variables.
 - Frontend calls the Node.js API only. It does not call Anthropic or use privileged Supabase credentials.
 - No AWS, Supabase Edge Functions, OpenCV, Sharp/image enhancement, or queue in the first prototype.
 
 ## Environment configuration
-Backend-only: PORT, SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, ANTHROPIC_API_KEY, CLAUDE_MODEL, CORS_ORIGIN.
-Frontend: VITE_API_BASE_URL only.
+Backend-only in `Backend/.env.example`: PORT, SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, ANTHROPIC_API_KEY, CLAUDE_MODEL, CORS_ORIGIN.
+Frontend in `Fronted/.env.example`: VITE_API_BASE_URL only.
 Never place secrets in VITE_ variables or commit real credentials.
 
 ## Comparison workflow
