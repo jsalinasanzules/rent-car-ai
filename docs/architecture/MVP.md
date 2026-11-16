@@ -1,88 +1,118 @@
-# MVP Architecture — Vehicle Photo Selection
+# MVP Architecture — Vehicle Inspection Comparison with Claude Vision
 
 ## Goal
 
-Deliver one simple screen that can select multiple vehicle photographs and organize them by shot type. Persist image objects in Supabase Storage and metadata in Supabase PostgreSQL when the access model is confirmed.
+Deliver one screen where an operator selects multiple vehicle photographs for a previous inspection and a current inspection. Store originals in private Supabase Storage, compare matching vehicle zones with Claude Vision, and display structured potential changes.
 
 ## High-level flow
 
-1. User opens the photo-selection screen.
-2. User chooses one or more image files.
-3. The UI validates supported image formats and a configurable maximum file size.
-4. The UI displays previews and lets the user remove or replace files.
-5. Each photo is associated with a predefined shot type.
-6. On save, the application uploads original files to a private Supabase Storage bucket.
-7. The application records metadata and Storage object paths in PostgreSQL.
-8. The UI displays success or actionable errors.
+1. User selects baseline and current inspections (or creates the two inspection records for the prototype).
+2. User selects multiple images for each inspection and assigns a predefined vehicle zone.
+3. Frontend validates supported image formats and configurable file-size/count limits.
+4. Original images are uploaded to a private Supabase Storage bucket.
+5. Image metadata and Storage object paths are saved in PostgreSQL.
+6. User starts comparison.
+7. Frontend calls a protected Supabase Edge Function using application IDs only.
+8. Edge Function validates user access and pairs images by the same zone.
+9. Edge Function obtains short-lived access to the private images and calls Anthropic Claude Messages API.
+10. Function validates the response against the application schema, persists results, and returns status/findings.
+11. Frontend displays findings and marks uncertain comparisons as inconclusive.
 
-## Suggested initial shot types
+## Image pairing
 
-Use stable machine values and human-readable labels:
-
-| Value | Label |
-|---|---|
-| `front` | Front |
-| `rear` | Rear |
-| `left_side` | Left side |
-| `right_side` | Right side |
-| `front_left_corner` | Front-left corner |
-| `front_right_corner` | Front-right corner |
-| `rear_left_corner` | Rear-left corner |
-| `rear_right_corner` | Rear-right corner |
-| `interior` | Interior |
-| `dashboard` | Dashboard / odometer |
-| `detail` | Other detail |
-
-The user can select multiple shot types. Whether multiple photos may be assigned to the same shot type should be configurable in the UI; do not impose a one-photo-per-type database constraint unless product requirements confirm it.
+- Compare baseline and current images only when they refer to the same vehicle and same zone.
+- For the first iteration, support one image per zone per inspection to keep pairing deterministic.
+- If one side is missing a matching zone, do not ask Claude to infer a comparison; mark that zone as `INCONCLUSIVE` or omit it with an explicit reason.
+- Similar camera angle, distance, framing, and lighting improve reliability.
+- Do not compare images of different vehicle zones.
+- Do not claim exact image registration or pixel-level localization.
 
 ## Supabase responsibilities
 
 ### Storage
 
-- Use a private bucket for inspection images.
-- Store original image files, not base64 strings.
-- Generate object paths that are unique and scoped to the inspection/session.
-- Do not expose the service-role key in the frontend.
-- Do not use public object URLs for private inspection images.
+- Private bucket: `vehicle-inspection-photos`.
+- Upload original image files; do not store base64 in PostgreSQL.
+- Object paths must be unique and scoped to inspection IDs.
+- Do not use public object URLs.
+- Browser uploads only through authenticated Supabase client and approved policies.
 
 ### Database
 
-Persist only the metadata needed by the prototype, such as:
-- image record ID
-- inspection/session ID
-- shot type
-- Storage bucket and object path
-- original filename
-- MIME type
-- file size
-- creation timestamp
+Store:
+- vehicle and inspection records
+- image metadata and object paths
+- comparison records and processing status
+- normalized findings returned by Claude
 
-The exact schema and access policies must reflect the authentication/tenant model. That model is not yet defined. Do not invent a permissive RLS policy to make uploads work.
+Suggested statuses:
+- Processing: `PENDING`, `PROCESSING`, `COMPLETED`, `FAILED`
+- Result: `NEW_DAMAGE`, `NO_CHANGE`, `INCONCLUSIVE`
 
-## Security and validation
+Use RLS and Storage policies aligned with the confirmed authentication/tenant model.
 
-- Allow only supported image MIME types (initially JPEG, PNG, and WebP; confirm browser support and product needs).
-- Enforce a reasonable configurable file-size limit.
-- Validate file metadata on the client for user feedback and at the trusted storage/database boundary for security.
-- Keep the bucket private.
-- Apply Supabase Row Level Security and Storage policies before enabling real-user uploads.
-- Never accept arbitrary external image URLs as a substitute for owned Storage object paths.
+## Claude Vision integration
+
+- Use Anthropic Messages API with vision-capable Claude model.
+- Call it only from a Supabase Edge Function.
+- Store `ANTHROPIC_API_KEY` in Supabase Edge Function secrets; configure the model through `CLAUDE_MODEL`.
+- The frontend sends IDs, not arbitrary URLs or raw Anthropic credentials.
+- Function verifies that both images belong to the authorized vehicle/inspections and matching zone.
+- Function generates short-lived signed URLs or fetches the private objects server-side for base64 encoding.
+- Label image roles explicitly: **Image A = previous/baseline**, **Image B = current**.
+- Prompt Claude to report only visible changes that may be new damage, ignore lighting/reflections/shadows/camera differences, and return `INCONCLUSIVE` if comparison is unreliable.
+- Parse and validate structured JSON before persistence. Never trust unvalidated model output.
+- Record model identifier and prompt version for reproducibility; avoid storing unnecessary raw image data or sensitive provider payloads.
+
+### Expected analysis contract
+
+Overall result:
+- `NEW_DAMAGE`
+- `NO_CHANGE`
+- `INCONCLUSIVE`
+
+Finding:
+- `type`
+- `zone`
+- `location_description`
+- `description`
+- `severity`: `LOW` | `MEDIUM` | `HIGH` | `UNKNOWN`
+- `confidence`: number from 0 to 1 (model estimate, not calibrated)
+- `requires_human_review`: boolean (true by default)
+
+Do not include bounding boxes in the first MVP unless a separate validation task establishes their reliability. Do not produce an automatic insurance/repair decision.
+
+## Error handling and execution model
+
+- Start with synchronous Edge Function execution for a small number of photo pairs.
+- Limit number and size of images per request to stay within provider and Edge Function limits.
+- Persist `PROCESSING` before inference and set `COMPLETED` or `FAILED` after validated processing.
+- Handle provider timeout, rate limit, invalid response, missing image, and storage errors.
+- Do not blindly retry paid inference requests; use idempotency and clear retry behavior.
+- Keep the analysis service modular so a queue/worker can be added later if real usage requires it.
+
+## Security
+
+- Private Storage bucket and RLS.
+- Validate user access to both inspections and every image in the Edge Function.
+- Never expose service-role/secret keys or Anthropic key in browser code.
+- Never accept client-supplied arbitrary external URLs.
+- Generate short-lived signed URLs server-side only.
+- Enforce upload MIME type, size, count, and zone rules.
+- Do not log secrets, signed URLs, or image contents.
 
 ## Explicitly out of scope
 
-- Claude Vision or any other AI inference.
-- Before/after image comparison.
-- Damage detection, bounding boxes, severity scoring, or PASS/FAIL decisions.
-- OpenCV, Sharp-based enhancement, or other image processing.
-- AWS, SQS, or other cloud infrastructure.
-- PDF generation, partner webhooks, multi-tenant API keys, and production deployment automation.
+- AWS.
+- OpenCV, Sharp, image enhancement, image registration, or destructive image transforms.
+- Background queues and distributed workers.
+- PDF reports, partner webhooks, multi-tenant API-key products, and production billing.
+- Automatic repair estimates, insurance decisions, or vehicle safety certification.
 
 ## Open decisions
 
-1. What authentication provider/user model will own each inspection?
-2. Is this prototype single-tenant initially, or must tenant isolation be present from day one?
-3. What is the maximum file size and maximum number of photos per inspection?
-4. Can one shot type contain multiple photos?
-5. Should the first increment only preview locally, or should it also upload and persist to Supabase?
-
-Do not block the local photo-selection UI on questions that do not affect it. Resolve the persistence/security decisions before enabling real uploads.
+1. Authentication and tenant ownership model.
+2. Maximum number of images and maximum file size.
+3. Confirm one image per zone per inspection for deterministic MVP pairing.
+4. Select Claude model and cost ceiling.
+5. Define a small labeled test set and human-review procedure.
