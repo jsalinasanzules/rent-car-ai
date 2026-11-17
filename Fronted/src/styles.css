@@ -131,3 +131,5 @@ h1{font-family:Manrope,sans-serif;font-size:29px;letter-spacing:-1.1px;font-weig
 .ai-finding p{font-size:10px;line-height:1.5;color:#4d5c70;margin-top:6px}
 .ai-finding small{display:block;font-size:9px;color:#8995a5;margin-top:8px}
 .ai-disclaimer{font-size:9px;line-height:1.5;color:#8995a5;margin-top:13px}
+
+.load-inspection-controls{display:flex;gap:9px;margin-top:13px}.load-inspection-controls input{flex:1;min-width:0;border:1px solid #e2e8f0;border-radius:7px;background:#fff;color:#26374f;font-size:11px;padding:10px 12px}.load-inspection-controls button:disabled{opacity:.55;cursor:not-allowed}.loaded-baseline{display:flex;align-items:center;gap:7px;color:#39805e;font-size:10px;margin-top:11px;overflow-wrap:anywhere}@media(max-width:500px){.load-inspection-controls{flex-direction:column}.load-inspection-controls button{justify-content:center}}
