@@ -419,11 +419,11 @@ function App() {
             <div className="vehicle-meta"><span>STATUS</span><strong className={savedResult ? "saved-state" : "draft-state"}><i /> {savedResult ? "Saved" : "Draft"}</strong></div>
           </div>
           <div className="vehicle-fields">
-            <label>Make *<input value={vehicle.make} placeholder="e.g. Toyota" onChange={(e) = disabled={Boolean(loadedBaselineId)}> { setVehicle({ ...vehicle, make: e.target.value }); setSavedResult(null); setComparison(null); }} /></label>
-            <label>Model *<input value={vehicle.model} placeholder="e.g. Corolla" onChange={(e) = disabled={Boolean(loadedBaselineId)}> { setVehicle({ ...vehicle, model: e.target.value }); setSavedResult(null); setComparison(null); }} /></label>
-            <label>Year<input type="number" min="1886" max="2100" value={vehicle.modelYear} placeholder="2022" onChange={(e) = disabled={Boolean(loadedBaselineId)}> { setVehicle({ ...vehicle, modelYear: e.target.value }); setSavedResult(null); setComparison(null); }} /></label>
-            <label>License plate<input value={vehicle.licensePlate} placeholder="ABC-1234" onChange={(e) = disabled={Boolean(loadedBaselineId)}> { setVehicle({ ...vehicle, licensePlate: e.target.value }); setSavedResult(null); setComparison(null); }} /></label>
-            <label>VIN / Chassis<input value={vehicle.vin} placeholder="Chassis number" onChange={(e) = disabled={Boolean(loadedBaselineId)}> { setVehicle({ ...vehicle, vin: e.target.value }); setSavedResult(null); setComparison(null); }} /></label>
+            <label>Make *<input value={vehicle.make} placeholder="e.g. Toyota" disabled={Boolean(loadedBaselineId)} onChange={(e) => { setVehicle({ ...vehicle, make: e.target.value }); setSavedResult(null); setComparison(null); }} /></label>
+            <label>Model *<input value={vehicle.model} placeholder="e.g. Corolla" disabled={Boolean(loadedBaselineId)} onChange={(e) => { setVehicle({ ...vehicle, model: e.target.value }); setSavedResult(null); setComparison(null); }} /></label>
+            <label>Year<input type="number" min="1886" max="2100" value={vehicle.modelYear} placeholder="2022" disabled={Boolean(loadedBaselineId)} onChange={(e) => { setVehicle({ ...vehicle, modelYear: e.target.value }); setSavedResult(null); setComparison(null); }} /></label>
+            <label>License plate<input value={vehicle.licensePlate} placeholder="ABC-1234" disabled={Boolean(loadedBaselineId)} onChange={(e) => { setVehicle({ ...vehicle, licensePlate: e.target.value }); setSavedResult(null); setComparison(null); }} /></label>
+            <label>VIN / Chassis<input value={vehicle.vin} placeholder="Chassis number" disabled={Boolean(loadedBaselineId)} onChange={(e) => { setVehicle({ ...vehicle, vin: e.target.value }); setSavedResult(null); setComparison(null); }} /></label>
           </div>
         </section>
 
