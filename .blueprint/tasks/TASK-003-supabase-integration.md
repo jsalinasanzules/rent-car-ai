@@ -17,7 +17,7 @@ Save vehicle details, baseline/current inspection records, original photos, and 
 - Zone identifiers are aligned between frontend and database.
 - At least one shared photo zone is required before saving.
 - Failed persistence attempts clean up uploaded objects and the created vehicle/inspection records.
-- Frontend includes vehicle fields and an explicit save button with loading, success, and error states.
+- Frontend includes vehicle fields and an explicit save button with loading, success and error states. The save button prevents accidental duplicate submissions until the form is changed.
 - AI comparison remains disabled until TASK-004.
 
 ## Prototype migration required
@@ -29,6 +29,7 @@ After applying migration 001, apply `Backend/supabase/migrations/002_prototype_s
 - [ ] Save one vehicle with at least one matching photo zone and verify vehicle, two inspections, image metadata, and private Storage objects in Supabase.
 - [ ] Verify invalid MIME, oversized file, missing file, and nonmatching zones are rejected.
 - [ ] Verify a failed Storage/DB operation does not leave partial records or orphaned objects.
+- [ ] Implement safe idempotent retries and editing/replacement of an existing inspection set (currently each new submission after editing creates a new vehicle and inspection set).
 - [ ] Record actual command output and Supabase verification evidence.
 
 ## Acceptance criteria
@@ -37,7 +38,7 @@ After applying migration 001, apply `Backend/supabase/migrations/002_prototype_s
 - [x] Metadata references inspection, zone, object path, MIME type, size, and timestamp.
 - [x] Frontend contains only public API configuration.
 - [x] Service-role and Anthropic keys never reach browser.
-- [x] Retry/replacement are not yet implemented as updates; a new submission creates a new vehicle and inspection set.
+- [ ] Safe retries and updates/replacement of existing records.
 - [ ] Tests and actual verification results are documented.
 
 ## Current scope boundary
