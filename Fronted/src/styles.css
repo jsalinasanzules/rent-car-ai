@@ -3,9 +3,9 @@
 :root{font-family:'DM Sans',sans-serif;color:#172235;background:#f5f7fb;font-synthesis:none;text-rendering:optimizeLegibility;font-smooth:always;font-weight:400}
 *{box-sizing:border-box}
 body{margin:0;min-width:320px;background:#f5f7fb}
-button,select{font:inherit}
+button,select,input{font:inherit}
 button{cursor:pointer}
-button:focus-visible,select:focus-visible{outline:3px solid #a9c9ff;outline-offset:2px}
+button:focus-visible,select:focus-visible,input:focus-visible{outline:3px solid #a9c9ff;outline-offset:2px}
 .app-shell{min-height:100vh}
 .topbar{height:70px;background:#fff;border-bottom:1px solid #e9edf3;display:flex;align-items:center;justify-content:space-between;padding:0 max(calc((100vw - 1240px)/2),28px)}
 .brand{display:flex;align-items:center;gap:10px;color:#15243a;text-decoration:none;font-family:Manrope,sans-serif;font-size:20px;font-weight:800;letter-spacing:-.8px}
@@ -26,15 +26,23 @@ h1{font-family:Manrope,sans-serif;font-size:29px;letter-spacing:-1.1px;font-weig
 .secure-note{display:flex;align-items:center;gap:9px;color:#43856a;font-size:11px;line-height:1.5;padding:9px 13px;background:#f0f8f4;border:1px solid #dcefe3;border-radius:10px}
 .secure-note strong{color:#397357;font-weight:700}
 .vehicle-summary{display:flex;align-items:center;gap:14px;background:#fff;border:1px solid #e8edf4;border-radius:12px;padding:14px 17px;margin-bottom:31px;box-shadow:0 2px 8px #172d4c05}
-.vehicle-thumb{width:44px;height:44px;border-radius:10px;background:#edf3fc;color:#5680b9;display:grid;place-items:center}
+.vehicle-form{display:block;padding:17px;margin-bottom:29px}
+.vehicle-form-heading{display:flex;align-items:center;gap:12px;margin-bottom:16px}
+.vehicle-thumb{width:44px;height:44px;border-radius:10px;background:#edf3fc;color:#5680b9;display:grid;place-items:center;flex-shrink:0}
 .vehicle-info{display:flex;flex-direction:column;gap:3px;flex:1}
 .summary-label,.vehicle-meta>span{font-size:9px;font-weight:700;letter-spacing:.8px;color:#9aa5b5}
 .vehicle-info strong{font-size:13px;color:#26374f}
 .vehicle-info>span:last-child{font-size:11px;color:#8a96a8}
 .vehicle-meta{display:flex;flex-direction:column;gap:5px;padding:0 20px;border-left:1px solid #edf0f4;min-width:130px}
 .vehicle-meta strong{font-size:11px;color:#58677d;font-weight:600}
-.draft-state{display:flex;align-items:center;gap:6px}
-.draft-state i{width:6px;height:6px;background:#e2a33d;border-radius:50%}
+.draft-state,.saved-state{display:flex;align-items:center;gap:6px}
+.draft-state i,.saved-state i{width:6px;height:6px;background:#e2a33d;border-radius:50%}
+.saved-state{color:#34835e!important}
+.saved-state i{background:#38a477}
+.vehicle-fields{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:12px}
+.vehicle-fields label{display:flex;flex-direction:column;gap:6px;font-size:10px;color:#68788e;font-weight:600}
+.vehicle-fields input{width:100%;min-width:0;border:1px solid #e2e8f0;border-radius:7px;background:#fff;color:#26374f;font-size:11px;padding:10px 9px}
+.vehicle-fields input::placeholder{color:#b1bac7}
 .section-heading{display:flex;align-items:flex-end;justify-content:space-between;margin-bottom:15px}
 .section-heading h2,.matching-heading h2{font-family:Manrope,sans-serif;font-size:16px;font-weight:800;letter-spacing:-.3px;color:#23344c}
 .section-heading p,.matching-heading p{font-size:11px;color:#8a96a8;margin-top:4px}
@@ -81,6 +89,7 @@ h1{font-family:Manrope,sans-serif;font-size:29px;letter-spacing:-1.1px;font-weig
 .notice{display:flex;align-items:center;gap:9px;margin-top:13px;padding:10px 12px;border-radius:8px;background:#fff8e9;border:1px solid #f2e5c5;color:#8c6b2e;font-size:10px}
 .notice span{flex:1}
 .notice button{border:0;background:transparent;color:inherit;display:grid;place-items:center}
+.notice-success{background:#eff8f3;border-color:#d7ecdf;color:#397a5b}
 .matching-section{background:#fff;border:1px solid #e7ecf3;border-radius:12px;margin-top:20px;padding:16px 18px}
 .matching-heading{display:flex;align-items:center;gap:10px}
 .matching-icon{width:34px;height:34px;display:grid;place-items:center;border-radius:9px;background:#f0f4fa;color:#6383ac}
@@ -96,12 +105,18 @@ h1{font-family:Manrope,sans-serif;font-size:29px;letter-spacing:-1.1px;font-weig
 .ai-info strong{font-size:11px;color:#34547f}
 .ai-info p{font-size:10px;color:#7186a3;margin-top:4px;line-height:1.5}
 .coming-soon{margin-left:auto;white-space:nowrap;font-size:8px;font-weight:700;letter-spacing:.7px;color:#6886ad;background:#e2ebf8;padding:6px 8px;border-radius:5px}
-.page-actions{display:flex;align-items:center;justify-content:space-between;margin-top:19px}
+.page-actions{display:flex;align-items:center;justify-content:space-between;margin-top:19px;gap:14px}
 .local-disclaimer{display:flex;align-items:center;gap:6px;color:#929eae;font-size:10px}
-.compare-button{display:flex;align-items:center;gap:8px;border:0;border-radius:8px;padding:11px 15px;background:#2f70c7;color:#fff;font-size:11px;font-weight:700;box-shadow:0 3px 8px #2f70c72b}
+.local-disclaimer svg{flex-shrink:0}
+.action-buttons{display:flex;align-items:center;gap:9px}
+.save-button,.compare-button{display:flex;align-items:center;gap:8px;border:0;border-radius:8px;padding:11px 15px;color:#fff;font-size:11px;font-weight:700}
+.save-button{background:#27845d;box-shadow:0 3px 8px #27845d24}
+.save-button:hover:not(:disabled){background:#206f4e}
+.save-button:disabled{background:#aab8b0;cursor:not-allowed;box-shadow:none}
+.compare-button{background:#2f70c7;box-shadow:0 3px 8px #2f70c72b}
 .compare-button:disabled{background:#aabbd3;cursor:not-allowed;box-shadow:none}
 .button-soon{font-size:8px;opacity:.8;font-weight:500;border-left:1px solid #ffffff70;padding-left:8px}
 .hidden-input{display:none}
-@media(max-width:900px){.main-content{padding:24px 20px 42px}.inspection-grid{grid-template-columns:1fr 28px 1fr;gap:6px}.inspection-panel{padding:12px}.photo-grid{grid-template-columns:1fr}.photo-preview{height:150px}.panel-title-row{gap:5px}.step-tag{font-size:7px}.vehicle-meta{min-width:100px;padding:0 12px}}
-@media(max-width:650px){.topbar{height:60px;padding:0 17px}.main-content{padding:20px 15px 36px}.page-intro{align-items:flex-start}.secure-note{display:none}h1{font-size:24px}.page-intro p{font-size:12px}.vehicle-summary{gap:9px;padding:11px}.vehicle-thumb{width:38px;height:38px}.vehicle-info>span:last-child{max-width:170px;line-height:1.4}.vehicle-meta{min-width:0;padding:0 0 0 10px}.vehicle-meta:last-child{display:none}.section-heading{align-items:flex-start;gap:12px}.selection-progress{width:120px;flex-shrink:0;font-size:9px}.inspection-grid{grid-template-columns:1fr;gap:12px}.comparison-connector{height:16px;flex-direction:row}.comparison-connector svg{transform:rotate(90deg)}.inspection-panel{padding:14px}.photo-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.photo-preview{height:120px}.panel-heading{gap:8px}.panel-title-row h2{font-size:12px}.photo-counter{font-size:9px}.matching-section{padding:13px}.ai-info{align-items:flex-start}.coming-soon{font-size:7px;padding:5px}.page-actions{align-items:stretch;flex-direction:column;gap:12px}.compare-button{justify-content:center}.local-disclaimer{font-size:9px}}
+@media(max-width:900px){.main-content{padding:24px 20px 42px}.inspection-grid{grid-template-columns:minmax(0,1fr) 28px minmax(0,1fr);gap:6px}.inspection-panel{padding:12px}.photo-grid{grid-template-columns:1fr}.photo-preview{height:150px}.panel-title-row{gap:5px}.step-tag{font-size:7px}.vehicle-fields{grid-template-columns:repeat(3,minmax(0,1fr))}.vehicle-meta{min-width:100px;padding:0 12px}}
+@media(max-width:650px){.topbar{height:60px;padding:0 17px}.main-content{padding:20px 15px 36px}.page-intro{align-items:flex-start}.secure-note{display:none}h1{font-size:24px}.page-intro p{font-size:12px}.vehicle-form{padding:13px}.vehicle-form-heading{gap:9px}.vehicle-thumb{width:38px;height:38px}.vehicle-info>span:last-child{max-width:220px;line-height:1.4}.vehicle-meta{min-width:0;padding:0 0 0 10px}.vehicle-fields{grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}.vehicle-fields label{font-size:9px}.section-heading{align-items:flex-start;gap:12px}.selection-progress{width:120px;flex-shrink:0;font-size:9px}.inspection-grid{grid-template-columns:1fr;gap:12px}.comparison-connector{height:16px;flex-direction:row}.comparison-connector svg{transform:rotate(90deg)}.inspection-panel{padding:14px}.photo-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.photo-preview{height:120px}.panel-heading{gap:8px}.panel-title-row h2{font-size:12px}.photo-counter{font-size:9px}.matching-section{padding:13px}.ai-info{align-items:flex-start}.coming-soon{font-size:7px;padding:5px}.page-actions{align-items:stretch;flex-direction:column;gap:12px}.action-buttons{display:grid;grid-template-columns:1fr}.save-button,.compare-button{justify-content:center}.local-disclaimer{font-size:9px}}
 @media(max-width:390px){.photo-grid{grid-template-columns:1fr}.photo-preview{height:165px}.selection-progress{width:100px}.vehicle-meta{display:none}}
