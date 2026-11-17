@@ -182,7 +182,7 @@ function App() {
       const data = await response.json() as ComparisonResult & { error?: string; message?: string };
       if (!response.ok) throw new Error(data.message || data.error || "No fue posible comparar las fotografías.");
       setComparison(data);
-      setNotice("Análisis de Claude Vision completado. Revise los hallazgos antes de tomar decisiones.");
+      setNotice("Análisis de IA completado. Revise los hallazgos antes de tomar decisiones.");
     } catch (error) {
       setNotice(error instanceof Error ? error.message : "No fue posible completar el análisis con IA.");
     } finally {
@@ -392,8 +392,8 @@ function App() {
 
         <section className="ai-info">
           <div className="ai-symbol"><Sparkles size={19} /></div>
-          <div><strong>Análisis con Claude Vision</strong><p>Primero se guardan los originales y sus metadatos. El análisis de daños será el siguiente paso.</p></div>
-          <span className="coming-soon">SIGUIENTE ETAPA</span>
+          <div><strong>Análisis visual con IA</strong><p>Compare las fotografías de ambas inspecciones con el proveedor configurado en el backend.</p></div>
+          <span className="coming-soon">GEMINI / CLAUDE</span>
         </section>
 
         {comparison && (
@@ -438,8 +438,8 @@ function App() {
             <button className="save-button" onClick={() => void saveInspections()} disabled={!canSave}>
               <Save size={17} /> {saving ? "Guardando..." : savedResult ? "Guardado" : "Guardar inspecciones"}
             </button>
-            <button className="compare-button" disabled title="El procesamiento con IA se implementará después de completar el guardado.">
-              <Sparkles size={17} /> Comparar con IA <span className="button-soon">Próximamente</span>
+            <button className="compare-button" onClick={() => void runComparison()} disabled={!savedResult || comparing} title={!savedResult ? "Primero guarde las inspecciones." : "Comparar las fotografías guardadas con IA."}>
+              <Sparkles size={17} /> {comparing ? "Analizando..." : "Comparar con IA"}
             </button>
           </div>
         </footer>
