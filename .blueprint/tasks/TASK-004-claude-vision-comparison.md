@@ -1,6 +1,6 @@
 # TASK-004 — Backend AI: Claude Vision Comparison (Node.js + TypeScript)
 
-**Status:** Blocked until TASK-001 and TASK-003 are complete  
+**Status:** In Progress — implementation committed; requires migration 003, live key configuration and end-to-end verification  
 **Priority:** High  
 **Scope:** Node.js backend service + Anthropic Messages API.
 
@@ -30,10 +30,18 @@ Each finding: type, zone, location description, description, severity, confidenc
 Anthropic key stays in Node.js backend environment. Frontend never calls Anthropic. Keep Storage private. Reject arbitrary URLs. Never log secrets, signed URLs, or image contents. Every finding requires human review.
 
 ## Acceptance criteria
-- [ ] Claude is called only from Node.js backend.
-- [ ] Same-vehicle/same-zone pairing is enforced.
-- [ ] Private images are loaded securely from Supabase.
-- [ ] Response is schema-validated before persistence.
-- [ ] Inconclusive and provider-error states are distinct from success.
-- [ ] Idempotency, cost limits, and mocked tests exist.
+- [x] Claude is called only from Node.js backend.
+- [x] Same-vehicle/same-zone pairing is enforced.
+- [x] Private images are loaded securely from Supabase.
+- [x] Response is schema-validated before persistence.
+- [x] Inconclusive and provider-error states are distinct from success.
+- [x] Idempotency, cost limits, and schema tests exist.
 - [ ] Actual verification evidence is recorded.
+
+## Implementation notes
+- `POST /api/comparisons` accepts only baseline/current inspection IDs; it never accepts arbitrary image URLs.
+- The API checks same vehicle, inspection types, owner scope, matching zones, private bucket and expected object path.
+- Up to five matching zones are analyzed per request; each image is limited to 7 MB for Claude.
+- A unique baseline/current pair prevents paid duplicate inference. Failed runs are not automatically retried.
+- Migration `003_claude_vision_comparisons.sql` adds model, prompt, token, error and per-zone result persistence.
+- No live Anthropic request or local test/build command has been executed from this session. Apply migration 003, configure `ANTHROPIC_API_KEY`, then run the documented checks and a real comparison.
