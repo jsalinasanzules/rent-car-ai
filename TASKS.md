@@ -2,10 +2,10 @@
 
 Current milestone: Vehicle photo comparison prototype.
 
-- [ ] TASK-001 — Backend: Node.js + TypeScript, Supabase data model and private Storage — In Progress (migration 002 + runtime verification pending). Details: .blueprint/tasks/TASK-001-backend-supabase.md
+- [x] TASK-001 — Backend: Node.js + TypeScript, Supabase data model and private Storage — Done (user confirmed end-to-end save and photo persistence). Details: .blueprint/tasks/TASK-001-backend-supabase.md
 - [x] TASK-002 — Frontend: React + TypeScript multi-photo selector — Done (verification confirmed by user). Details: .blueprint/tasks/TASK-002-frontend-photo-selector.md
-- [ ] TASK-003 — Backend integration: persist vehicle details, inspections and photo uploads — In Progress. Details: .blueprint/tasks/TASK-003-supabase-integration.md
-- [ ] TASK-004 — Backend AI: Claude Vision comparison — Blocked until TASK-003 persistence is verified. Details: .blueprint/tasks/TASK-004-claude-vision-comparison.md
+- [x] TASK-003 — Backend integration: persist vehicle details, inspections and photo uploads — Done (user confirmed records and photos are saved). Details: .blueprint/tasks/TASK-003-supabase-integration.md
+- [ ] TASK-004 — Backend AI: Claude Vision comparison — In Progress (implementation committed; migration 003 and live verification pending). Details: .blueprint/tasks/TASK-004-claude-vision-comparison.md
 
 ## Directory rules
 - Frontend implementation and configuration: `Fronted/`.
@@ -15,9 +15,9 @@ Current milestone: Vehicle photo comparison prototype.
 
 ## Execution order
 1. TASK-002 local frontend — complete.
-2. TASK-001 backend foundation and ordered Supabase migrations — implementation present; environment verification pending.
-3. TASK-003 save vehicle details, both inspections, photos and metadata — implementation present; end-to-end verification pending.
-4. TASK-004 Claude Vision comparison API.
+2. TASK-001 backend foundation and ordered Supabase migrations — complete; save flow verified by user.
+3. TASK-003 save vehicle details, both inspections, photos and metadata — complete; save flow verified by user.
+4. TASK-004 Claude Vision comparison API — implementation in progress; apply migration 003 and run a live test.
 5. End-to-end validation with labeled before/after photo pairs.
 
 Keep this board synchronized with individual tasks and MEMORY.md. Status values: Ready, In Progress, Blocked, Done. A task is Done only when acceptance criteria and verification evidence are recorded.
