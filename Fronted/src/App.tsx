@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import {
   AlertCircle, ArrowLeftRight, Camera, Check, CheckCircle2,
   ChevronDown, Clock3, Info, Layers3, Plus, ShieldCheck, Sparkles,
-  Trash2, UploadCloud, X,
+  Trash2, UploadCloud, X, Save, CarFront,
 } from "lucide-react";
 
 type Side = "baseline" | "current";
@@ -18,6 +18,23 @@ type Photo = {
   preview: string;
   zone: Zone | "";
 };
+
+type VehicleForm = {
+  make: string;
+  model: string;
+  modelYear: string;
+  licensePlate: string;
+  vin: string;
+};
+
+type SaveResult = {
+  vehicleId: string;
+  inspections: { baseline: string; current: string };
+  images: Array<{ id: string; zone: string; inspection_id: string }>;
+  message: string;
+};
+
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://localhost:3000/api";
 
 const ZONES: { value: Zone; label: string }[] = [
   { value: "front", label: "Frontal" },
@@ -39,7 +56,12 @@ const ACCEPTED_TYPES = ["image/jpeg", "image/png", "image/webp"];
 function App() {
   const [baseline, setBaseline] = useState<Photo[]>([]);
   const [current, setCurrent] = useState<Photo[]>([]);
+  const [vehicle, setVehicle] = useState<VehicleForm>({
+    make: "", model: "", modelYear: "", licensePlate: "", vin: "",
+  });
   const [notice, setNotice] = useState("");
+  const [saving, setSaving] = useState(false);
+  const [savedResult, setSavedResult] = useState<SaveResult | null>(null);
   const baselineInput = useRef<HTMLInputElement>(null);
   const currentInput = useRef<HTMLInputElement>(null);
   const photosRef = useRef<Photo[]>([]);
@@ -61,10 +83,15 @@ function App() {
   }, [baseline, current]);
 
   const assignedCount = allPhotos.filter((photo) => photo.zone).length;
-  const comparisonReady = matchedZones.size > 0;
-  const backendIntegrationReady = false;
+  const allAssigned = allPhotos.length > 0 && assignedCount === allPhotos.length;
+  const canSave = Boolean(
+    vehicle.make.trim() && vehicle.model.trim() &&
+    baseline.length > 0 && current.length > 0 &&
+    allAssigned && matchedZones.size > 0 && !saving
+  );
 
   function updateSide(side: Side, updater: (photos: Photo[]) => Photo[]) {
+    setSavedResult(null);
     const setter = side === "baseline" ? setBaseline : setCurrent;
     setter((photos) => updater(photos));
   }
@@ -122,6 +149,52 @@ function App() {
 
   function openPicker(side: Side) {
     (side === "baseline" ? baselineInput : currentInput).current?.click();
+  }
+
+  async function saveInspections() {
+    if (!canSave) {
+      setNotice("Complete marca y modelo, agregue fotografías a ambas inspecciones y asigne una zona a cada imagen. Debe existir al menos una zona coincidente.");
+      return;
+    }
+
+    setSaving(true);
+    setNotice("");
+    const formData = new FormData();
+    const serializePhotos = (photos: Photo[], side: Side) => photos.map((photo) => {
+      const fileField = `${side}__${photo.id}`;
+      formData.append(fileField, photo.file, photo.file.name);
+      return { zone: photo.zone, fileField };
+    });
+
+    const payload = {
+      vehicle: {
+        make: vehicle.make.trim(),
+        model: vehicle.model.trim(),
+        modelYear: vehicle.modelYear ? Number(vehicle.modelYear) : null,
+        licensePlate: vehicle.licensePlate.trim(),
+        vin: vehicle.vin.trim(),
+      },
+      baseline: { photos: serializePhotos(baseline, "baseline") },
+      current: { photos: serializePhotos(current, "current") },
+    };
+    formData.append("payload", JSON.stringify(payload));
+
+    try {
+      const response = await fetch(`${API_BASE_URL}/inspections`, {
+        method: "POST",
+        body: formData,
+      });
+      const data = await response.json() as SaveResult & { error?: string };
+      if (!response.ok) {
+        throw new Error(data.message || data.error || "No se pudieron guardar los datos.");
+      }
+      setSavedResult(data);
+      setNotice(data.message || "Inspecciones guardadas correctamente en Supabase.");
+    } catch (error) {
+      setNotice(error instanceof Error ? error.message : "No fue posible conectar con el backend. Verifique que esté ejecutándose.");
+    } finally {
+      setSaving(false);
+    }
   }
 
   const renderPhotoCard = (photo: Photo, side: Side) => (
@@ -219,25 +292,33 @@ function App() {
           <div>
             <div className="eyebrow"><Sparkles size={14} /> INSPECCIÓN INTELIGENTE</div>
             <h1>Comparar inspecciones</h1>
-            <p>Seleccione las fotografías de ambas inspecciones. La IA analizará las mismas zonas para identificar posibles novedades.</p>
+            <p>Registre el vehículo, guarde las fotografías de ambas inspecciones y luego podrá solicitar el análisis de IA.</p>
           </div>
-          <div className="secure-note"><ShieldCheck size={17} /><span>Imágenes privadas<br /><strong>Acceso protegido</strong></span></div>
+          <div className="secure-note"><ShieldCheck size={17} /><span>Imágenes privadas<br /><strong>Almacenamiento Supabase</strong></span></div>
         </section>
 
-        <section className="vehicle-summary">
-          <div className="vehicle-thumb"><Camera size={25} /></div>
-          <div className="vehicle-info">
-            <span className="summary-label">VEHÍCULO EN INSPECCIÓN</span>
-            <strong>Vehículo de prueba</strong>
-            <span>Complete las fotografías para iniciar la comparación</span>
+        <section className="vehicle-summary vehicle-form">
+          <div className="vehicle-form-heading">
+            <div className="vehicle-thumb"><CarFront size={25} /></div>
+            <div className="vehicle-info">
+              <span className="summary-label">DATOS DEL VEHÍCULO</span>
+              <strong>Identificación del vehículo</strong>
+              <span>Complete los datos antes de guardar las inspecciones.</span>
+            </div>
+            <div className="vehicle-meta"><span>ESTADO</span><strong className={savedResult ? "saved-state" : "draft-state"}><i /> {savedResult ? "Guardado" : "Borrador"}</strong></div>
           </div>
-          <div className="vehicle-meta"><span>VIN</span><strong>Por registrar</strong></div>
-          <div className="vehicle-meta"><span>ESTADO</span><strong className="draft-state"><i /> Borrador</strong></div>
+          <div className="vehicle-fields">
+            <label>Marca *<input value={vehicle.make} placeholder="Ej. Toyota" onChange={(e) => { setVehicle({ ...vehicle, make: e.target.value }); setSavedResult(null); }} /></label>
+            <label>Modelo *<input value={vehicle.model} placeholder="Ej. Corolla" onChange={(e) => { setVehicle({ ...vehicle, model: e.target.value }); setSavedResult(null); }} /></label>
+            <label>Año<input type="number" min="1886" max="2100" value={vehicle.modelYear} placeholder="2022" onChange={(e) => { setVehicle({ ...vehicle, modelYear: e.target.value }); setSavedResult(null); }} /></label>
+            <label>Placa<input value={vehicle.licensePlate} placeholder="ABC-1234" onChange={(e) => { setVehicle({ ...vehicle, licensePlate: e.target.value }); setSavedResult(null); }} /></label>
+            <label>VIN / Chasis<input value={vehicle.vin} placeholder="Número de chasis" onChange={(e) => { setVehicle({ ...vehicle, vin: e.target.value }); setSavedResult(null); }} /></label>
+          </div>
         </section>
 
         <div className="section-heading">
           <div><h2>Registro fotográfico</h2><p>Seleccione varias tomas en cada inspección y asígneles la misma zona para compararlas.</p></div>
-          <div className="selection-progress"><span>{assignedCount} fotografías clasificadas</span><div className="progress-track"><span style={{ width: `${Math.min(100, (assignedCount / 8) * 100)}%` }} /></div></div>
+          <div className="selection-progress"><span>{assignedCount} de {allPhotos.length} fotografías clasificadas</span><div className="progress-track"><span style={{ width: `${allPhotos.length ? Math.min(100, (assignedCount / allPhotos.length) * 100) : 0}%` }} /></div></div>
         </div>
 
         <div className="inspection-grid">
@@ -247,8 +328,9 @@ function App() {
         </div>
 
         {notice && (
-          <div className="notice" role="status">
-            <Info size={17} /><span>{notice}</span><button onClick={() => setNotice("")} aria-label="Cerrar aviso"><X size={15} /></button>
+          <div className={`notice ${savedResult ? "notice-success" : ""}`} role="status">
+            {savedResult ? <CheckCircle2 size={17} /> : <Info size={17} />}
+            <span>{notice}</span><button onClick={() => setNotice("")} aria-label="Cerrar aviso"><X size={15} /></button>
           </div>
         )}
 
@@ -271,15 +353,23 @@ function App() {
 
         <section className="ai-info">
           <div className="ai-symbol"><Sparkles size={19} /></div>
-          <div><strong>Análisis con Claude Vision</strong><p>La comparación identificará posibles rayones, abolladuras, grietas y cambios visibles. Los resultados requerirán revisión humana.</p></div>
+          <div><strong>Análisis con Claude Vision</strong><p>Primero se guardan los originales y sus metadatos. El análisis de daños será el siguiente paso.</p></div>
           <span className="coming-soon">SIGUIENTE ETAPA</span>
         </section>
 
         <footer className="page-actions">
-          <span className="local-disclaimer"><Info size={14} /> Prototipo local: las imágenes aún no se han guardado.</span>
-          <button className="compare-button" disabled={!comparisonReady || !backendIntegrationReady} title="Disponible cuando se implemente la API backend">
-            <Sparkles size={17} /> Comparar con IA <span className="button-soon">Próximamente</span>
-          </button>
+          <span className="local-disclaimer">
+            {savedResult ? <CheckCircle2 size={14} /> : <Info size={14} />}
+            {savedResult ? `${savedResult.images.length} imágenes guardadas en Supabase` : "Aún no se han guardado los datos ni las imágenes."}
+          </span>
+          <div className="action-buttons">
+            <button className="save-button" onClick={() => void saveInspections()} disabled={!canSave}>
+              <Save size={17} /> {saving ? "Guardando..." : savedResult ? "Guardar cambios" : "Guardar inspecciones"}
+            </button>
+            <button className="compare-button" disabled title="El procesamiento con IA se implementará después de completar el guardado.">
+              <Sparkles size={17} /> Comparar con IA <span className="button-soon">Próximamente</span>
+            </button>
+          </div>
         </footer>
       </main>
 
