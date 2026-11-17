@@ -8,7 +8,7 @@ export async function buildApp(): Promise<FastifyInstance> {
   const env = getEnv();
   const app = Fastify({
     logger: env.NODE_ENV !== "test",
-    bodyLimit: 15 * 1024 * 1024,
+    bodyLimit: 120 * 1024 * 1024,
   });
 
   await app.register(cors, {
