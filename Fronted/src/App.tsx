@@ -49,17 +49,17 @@ type SaveResult = {
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://localhost:3000/api";
 
 const ZONES: { value: Zone; label: string }[] = [
-  { value: "front", label: "Frontal" },
-  { value: "rear", label: "Posterior" },
-  { value: "left_side", label: "Lateral izquierdo" },
-  { value: "right_side", label: "Lateral derecho" },
-  { value: "front_left_corner", label: "Esquina delantera izquierda" },
-  { value: "front_right_corner", label: "Esquina delantera derecha" },
-  { value: "rear_left_corner", label: "Esquina trasera izquierda" },
-  { value: "rear_right_corner", label: "Esquina trasera derecha" },
+  { value: "front", label: "Front" },
+  { value: "rear", label: "Rear" },
+  { value: "left_side", label: "Left side" },
+  { value: "right_side", label: "Right side" },
+  { value: "front_left_corner", label: "Front-left corner" },
+  { value: "front_right_corner", label: "Front-right corner" },
+  { value: "rear_left_corner", label: "Rear-left corner" },
+  { value: "rear_right_corner", label: "Rear-right corner" },
   { value: "interior", label: "Interior" },
-  { value: "dashboard", label: "Tablero / odómetro" },
-  { value: "detail", label: "Detalle adicional" },
+  { value: "dashboard", label: "Dashboard / odometer" },
+  { value: "detail", label: "Additional detail" },
 ];
 
 const MAX_FILE_SIZE_MB = 7;
@@ -117,11 +117,11 @@ function App() {
 
     Array.from(fileList).forEach((file) => {
       if (!ACCEPTED_TYPES.includes(file.type)) {
-        errors.push(`${file.name}: formato no compatible`);
+        errors.push(`${file.name}: unsupported file format`);
         return;
       }
       if (file.size > MAX_FILE_SIZE_MB * 1024 * 1024) {
-        errors.push(`${file.name}: supera ${MAX_FILE_SIZE_MB} MB`);
+        errors.push(`${file.name}: exceeds ${MAX_FILE_SIZE_MB} MB`);
         return;
       }
       accepted.push({
@@ -133,7 +133,7 @@ function App() {
     });
 
     updateSide(side, (photos) => [...photos, ...accepted]);
-    setNotice(errors.length ? errors.join(" · ") : accepted.length ? `${accepted.length} fotografía(s) agregada(s). Asigne una toma a cada imagen.` : "");
+    setNotice(errors.length ? errors.join(" · ") : accepted.length ? `${accepted.length} photo(s) added. Assign a vehicle area to each image.` : "");
     if (side === "baseline" && baselineInput.current) baselineInput.current.value = "";
     if (side === "current" && currentInput.current) currentInput.current.value = "";
   }
@@ -180,11 +180,11 @@ function App() {
         }),
       });
       const data = await response.json() as ComparisonResult & { error?: string; message?: string };
-      if (!response.ok) throw new Error(data.message || data.error || "No fue posible comparar las fotografías.");
+      if (!response.ok) throw new Error(data.message || data.error || "Unable to compare the photos.");
       setComparison(data);
-      setNotice("Análisis de IA completado. Revise los hallazgos antes de tomar decisiones.");
+      setNotice("AI analysis completed. Review the findings before making any decisions.");
     } catch (error) {
-      setNotice(error instanceof Error ? error.message : "No fue posible completar el análisis con IA.");
+      setNotice(error instanceof Error ? error.message : "Unable to complete the AI analysis.");
     } finally {
       setComparing(false);
     }
@@ -192,7 +192,7 @@ function App() {
 
   async function saveInspections() {
     if (!canSave) {
-      setNotice("Complete marca y modelo, agregue fotografías a ambas inspecciones y asigne una zona a cada imagen. Debe existir al menos una zona coincidente.");
+      setNotice("Complete marca y modelo, agregue fotografías a ambas inspecciones y asigne una area a cada imagen. Debe existir al menos una area coincidente.");
       return;
     }
 
@@ -225,12 +225,12 @@ function App() {
       });
       const data = await response.json() as SaveResult & { error?: string };
       if (!response.ok) {
-        throw new Error(data.message || data.error || "No se pudieron guardar los datos.");
+        throw new Error(data.message || data.error || "Unable to save the data.");
       }
       setSavedResult(data);
-      setNotice(data.message || "Inspecciones guardadas correctamente en Supabase.");
+      setNotice(data.message || "Inspections guardadas correctamente en Supabase.");
     } catch (error) {
-      setNotice(error instanceof Error ? error.message : "No fue posible conectar con el backend. Verifique que esté ejecutándose.");
+      setNotice(error instanceof Error ? error.message : "Unable to connect to the backend. Make sure it is running.");
     } finally {
       setSaving(false);
     }
@@ -240,27 +240,27 @@ function App() {
     <article className="photo-card" key={photo.id}>
       <div className="photo-preview">
         <img src={photo.preview} alt={photo.file.name} />
-        <button className="icon-button remove-photo" onClick={() => removePhoto(side, photo.id)} aria-label="Eliminar fotografía" title="Eliminar">
+        <button className="icon-button remove-photo" onClick={() => removePhoto(side, photo.id)} aria-label="Remove photo" title="Remove">
           <Trash2 size={15} />
         </button>
         <span className="photo-size">{(photo.file.size / 1024 / 1024).toFixed(1)} MB</span>
       </div>
       <div className="photo-details">
         <p className="photo-name" title={photo.file.name}>{photo.file.name}</p>
-        <label className="field-label" htmlFor={`zone-${photo.id}`}>Toma del vehículo</label>
+        <label className="field-label" htmlFor={`zone-${photo.id}`}>Vehicle area</label>
         <div className="select-wrap">
           <select
             id={`zone-${photo.id}`}
             value={photo.zone}
             onChange={(event) => assignZone(side, photo.id, event.target.value as Zone | "")}
           >
-            <option value="">Seleccionar toma...</option>
+            <option value="">Select an area...</option>
             {ZONES.map((zone) => <option key={zone.value} value={zone.value}>{zone.label}</option>)}
           </select>
           <ChevronDown size={15} />
         </div>
         {photo.zone && matchedZones.has(photo.zone) && (
-          <span className="match-label"><CheckCircle2 size={13} /> Toma emparejada</span>
+          <span className="match-label"><CheckCircle2 size={13} /> Matched area</span>
         )}
       </div>
     </article>
@@ -268,8 +268,8 @@ function App() {
 
   const renderInspection = (side: Side, photos: Photo[]) => {
     const isBaseline = side === "baseline";
-    const title = isBaseline ? "Inspección anterior" : "Inspección actual";
-    const subtitle = isBaseline ? "Fotografías de referencia" : "Fotografías de la nueva revisión";
+    const title = isBaseline ? "Previous inspection" : "Current inspection";
+    const subtitle = isBaseline ? "Reference photos" : "Photos from the new inspection";
     return (
       <section className={`inspection-panel ${isBaseline ? "baseline-panel" : "current-panel"}`}>
         <div className="panel-heading">
@@ -281,7 +281,7 @@ function App() {
             </div>
             <p>{subtitle}</p>
           </div>
-          <span className="photo-counter">{photos.length} fotos</span>
+          <span className="photo-counter">{photos.length} photos</span>
         </div>
 
         {photos.length === 0 ? (
@@ -295,15 +295,15 @@ function App() {
             }}
           >
             <span className="upload-icon"><UploadCloud size={23} /></span>
-            <strong>Seleccionar fotografías</strong>
-            <span>Arrastre imágenes aquí o haga clic para buscarlas</span>
+            <strong>Select photos</strong>
+            <span>Drag images here or click to browse</span>
             <small>JPG, PNG o WEBP · Máximo {MAX_FILE_SIZE_MB} MB por imagen</small>
           </button>
         ) : (
           <>
             <div className="photo-grid">{photos.map((photo) => renderPhotoCard(photo, side))}</div>
             <button className="add-more-button" onClick={() => openPicker(side)}>
-              <Plus size={16} /> Agregar más fotografías
+              <Plus size={16} /> Add more photos
             </button>
           </>
         )}
@@ -314,50 +314,50 @@ function App() {
   return (
     <div className="app-shell">
       <header className="topbar">
-        <a className="brand" href="#" aria-label="Rent Car AI inicio">
+        <a className="brand" href="#" aria-label="Rent Car AI home">
           <span className="brand-mark"><Layers3 size={20} /></span>
           <span>rentcar<span className="brand-accent">.ai</span></span>
         </a>
         <div className="topbar-right">
-          <span className="prototype-pill"><span /> PROTOTIPO</span>
+          <span className="prototype-pill"><span /> PROTOTYPE</span>
           <span className="user-avatar">JS</span>
         </div>
       </header>
 
       <main className="main-content">
-        <div className="breadcrumb"><span>Inspecciones</span><span>/</span><strong>Comparación de vehículo</strong></div>
+        <div className="breadcrumb"><span>Inspections</span><span>/</span><strong>Vehicle comparison</strong></div>
 
         <section className="page-intro">
           <div>
-            <div className="eyebrow"><Sparkles size={14} /> INSPECCIÓN INTELIGENTE</div>
-            <h1>Comparar inspecciones</h1>
-            <p>Registre el vehículo, guarde las fotografías de ambas inspecciones y luego podrá solicitar el análisis de IA.</p>
+            <div className="eyebrow"><Sparkles size={14} /> SMART INSPECTION</div>
+            <h1>Compare inspections</h1>
+            <p>Enter the vehicle details, save photos from both inspections, and then run the AI analysis.</p>
           </div>
-          <div className="secure-note"><ShieldCheck size={17} /><span>Imágenes privadas<br /><strong>Almacenamiento Supabase</strong></span></div>
+          <div className="secure-note"><ShieldCheck size={17} /><span>Private images<br /><strong>Supabase storage</strong></span></div>
         </section>
 
         <section className="vehicle-summary vehicle-form">
           <div className="vehicle-form-heading">
             <div className="vehicle-thumb"><CarFront size={25} /></div>
             <div className="vehicle-info">
-              <span className="summary-label">DATOS DEL VEHÍCULO</span>
-              <strong>Identificación del vehículo</strong>
-              <span>Complete los datos antes de guardar las inspecciones.</span>
+              <span className="summary-label">VEHICLE DETAILS</span>
+              <strong>Vehicle identification</strong>
+              <span>Enter the vehicle details before saving the inspections.</span>
             </div>
-            <div className="vehicle-meta"><span>ESTADO</span><strong className={savedResult ? "saved-state" : "draft-state"}><i /> {savedResult ? "Guardado" : "Borrador"}</strong></div>
+            <div className="vehicle-meta"><span>STATUS</span><strong className={savedResult ? "saved-state" : "draft-state"}><i /> {savedResult ? "Saved" : "Draft"}</strong></div>
           </div>
           <div className="vehicle-fields">
-            <label>Marca *<input value={vehicle.make} placeholder="Ej. Toyota" onChange={(e) => { setVehicle({ ...vehicle, make: e.target.value }); setSavedResult(null); setComparison(null); }} /></label>
-            <label>Modelo *<input value={vehicle.model} placeholder="Ej. Corolla" onChange={(e) => { setVehicle({ ...vehicle, model: e.target.value }); setSavedResult(null); setComparison(null); }} /></label>
-            <label>Año<input type="number" min="1886" max="2100" value={vehicle.modelYear} placeholder="2022" onChange={(e) => { setVehicle({ ...vehicle, modelYear: e.target.value }); setSavedResult(null); setComparison(null); }} /></label>
-            <label>Placa<input value={vehicle.licensePlate} placeholder="ABC-1234" onChange={(e) => { setVehicle({ ...vehicle, licensePlate: e.target.value }); setSavedResult(null); setComparison(null); }} /></label>
-            <label>VIN / Chasis<input value={vehicle.vin} placeholder="Número de chasis" onChange={(e) => { setVehicle({ ...vehicle, vin: e.target.value }); setSavedResult(null); setComparison(null); }} /></label>
+            <label>Make *<input value={vehicle.make} placeholder="e.g. Toyota" onChange={(e) => { setVehicle({ ...vehicle, make: e.target.value }); setSavedResult(null); setComparison(null); }} /></label>
+            <label>Model *<input value={vehicle.model} placeholder="e.g. Corolla" onChange={(e) => { setVehicle({ ...vehicle, model: e.target.value }); setSavedResult(null); setComparison(null); }} /></label>
+            <label>Year<input type="number" min="1886" max="2100" value={vehicle.modelYear} placeholder="2022" onChange={(e) => { setVehicle({ ...vehicle, modelYear: e.target.value }); setSavedResult(null); setComparison(null); }} /></label>
+            <label>License plate<input value={vehicle.licensePlate} placeholder="ABC-1234" onChange={(e) => { setVehicle({ ...vehicle, licensePlate: e.target.value }); setSavedResult(null); setComparison(null); }} /></label>
+            <label>VIN / Chassis<input value={vehicle.vin} placeholder="Chassis number" onChange={(e) => { setVehicle({ ...vehicle, vin: e.target.value }); setSavedResult(null); setComparison(null); }} /></label>
           </div>
         </section>
 
         <div className="section-heading">
-          <div><h2>Registro fotográfico</h2><p>Seleccione varias tomas en cada inspección y asígneles la misma zona para compararlas.</p></div>
-          <div className="selection-progress"><span>{assignedCount} de {allPhotos.length} fotografías clasificadas</span><div className="progress-track"><span style={{ width: `${allPhotos.length ? Math.min(100, (assignedCount / allPhotos.length) * 100) : 0}%` }} /></div></div>
+          <div><h2>Photo records</h2><p>Select multiple views for each inspection and assign the same area to both sides to compare them.</p></div>
+          <div className="selection-progress"><span>{assignedCount} de {allPhotos.length} photos categorized</span><div className="progress-track"><span style={{ width: `${allPhotos.length ? Math.min(100, (assignedCount / allPhotos.length) * 100) : 0}%` }} /></div></div>
         </div>
 
         <div className="inspection-grid">
@@ -369,15 +369,15 @@ function App() {
         {notice && (
           <div className={`notice ${savedResult ? "notice-success" : ""}`} role="status">
             {savedResult ? <CheckCircle2 size={17} /> : <Info size={17} />}
-            <span>{notice}</span><button onClick={() => setNotice("")} aria-label="Cerrar aviso"><X size={15} /></button>
+            <span>{notice}</span><button onClick={() => setNotice("")} aria-label="Dismiss notification"><X size={15} /></button>
           </div>
         )}
 
         <section className="matching-section">
           <div className="matching-heading">
             <div className="matching-icon"><ArrowLeftRight size={18} /></div>
-            <div><h2>Zonas listas para comparar</h2><p>Solo se analizarán las zonas que tengan una fotografía en ambas inspecciones.</p></div>
-            <span className="match-count">{matchedZones.size} {matchedZones.size === 1 ? "zona" : "zonas"}</span>
+            <div><h2>Areas ready for comparison</h2><p>Only areas with a photo in both inspections will be analyzed.</p></div>
+            <span className="match-count">{matchedZones.size} {matchedZones.size === 1 ? "area" : "areas"}</span>
           </div>
           {matchedZones.size ? (
             <div className="matched-list">
@@ -386,13 +386,13 @@ function App() {
               ))}
             </div>
           ) : (
-            <div className="empty-match"><AlertCircle size={17} /><span>Seleccione y clasifique al menos una misma toma en ambas inspecciones.</span></div>
+            <div className="empty-match"><AlertCircle size={17} /><span>Select and categorize at least one matching area in both inspections.</span></div>
           )}
         </section>
 
         <section className="ai-info">
           <div className="ai-symbol"><Sparkles size={19} /></div>
-          <div><strong>Análisis visual con IA</strong><p>Compare las fotografías de ambas inspecciones con el proveedor configurado en el backend.</p></div>
+          <div><strong>AI visual analysis</strong><p>Compare photos from both inspections using the provider configured in the backend.</p></div>
           <span className="coming-soon">GEMINI / CLAUDE</span>
         </section>
 
@@ -401,8 +401,8 @@ function App() {
             <div className="matching-heading">
               <div className="matching-icon"><Sparkles size={18} /></div>
               <div>
-                <h2>Resultado del análisis</h2>
-                <p>{comparison.result === "NEW_DAMAGE" ? "Se detectaron posibles daños nuevos." : comparison.result === "NO_CHANGE" ? "No se identificaron daños nuevos visibles." : "No fue posible llegar a una conclusión fiable."}</p>
+                <h2>Analysis results</h2>
+                <p>{comparison.result === "NEW_DAMAGE" ? "Potential new damage was detected." : comparison.result === "NO_CHANGE" ? "No new visible damage was identified." : "A reliable conclusion could not be reached."}</p>
               </div>
               <span className="match-count">{comparison.result.replace("_", " ")}</span>
             </div>
@@ -414,32 +414,32 @@ function App() {
             </div>
             {comparison.findings.length > 0 && (
               <div className="ai-findings">
-                <h3>Hallazgos para revisión humana</h3>
+                <h3>Findings requiring human review</h3>
                 {comparison.findings.map((finding) => (
                   <article className="ai-finding" key={finding.id}>
                     <strong>{finding.finding_type} · {ZONES.find((item) => item.value === finding.zone)?.label ?? finding.zone}</strong>
                     <span>{finding.location_description}</span>
                     <p>{finding.description}</p>
-                    <small>Severidad: {finding.severity} · Confianza estimada: {Math.round(finding.confidence * 100)}% · Requiere revisión humana</small>
+                    <small>Severity: {finding.severity} · Estimated confidence: {Math.round(finding.confidence * 100)}% · Human review required</small>
                   </article>
                 ))}
               </div>
             )}
-            <p className="ai-disclaimer">La IA puede equivocarse. La confianza no está calibrada y todos los hallazgos requieren revisión humana. Modelo: {comparison.model} · Tokens: {comparison.usage.inputTokens} entrada / {comparison.usage.outputTokens} salida.</p>
+            <p className="ai-disclaimer">AI results may be inaccurate. Confidence scores are not calibrated, and all findings require human review. Model: {comparison.model} · Tokens: {comparison.usage.inputTokens} input / {comparison.usage.outputTokens} salida.</p>
           </section>
         )}
 
         <footer className="page-actions">
           <span className="local-disclaimer">
             {savedResult ? <CheckCircle2 size={14} /> : <Info size={14} />}
-            {savedResult ? `${savedResult.images.length} imágenes guardadas en Supabase` : "Aún no se han guardado los datos ni las imágenes."}
+            {savedResult ? `${savedResult.images.length} images saved to Supabase` : "Vehicle details and photos have not been saved yet."}
           </span>
           <div className="action-buttons">
             <button className="save-button" onClick={() => void saveInspections()} disabled={!canSave}>
-              <Save size={17} /> {saving ? "Guardando..." : savedResult ? "Guardado" : "Guardar inspecciones"}
+              <Save size={17} /> {saving ? "Saving..." : savedResult ? "Saved" : "Save inspections"}
             </button>
-            <button className="compare-button" onClick={() => void runComparison()} disabled={!savedResult || comparing} title={!savedResult ? "Primero guarde las inspecciones." : "Comparar las fotografías guardadas con IA."}>
-              <Sparkles size={17} /> {comparing ? "Analizando..." : "Comparar con IA"}
+            <button className="compare-button" onClick={() => void runComparison()} disabled={!savedResult || comparing} title={!savedResult ? "Save the inspections first." : "Compare the saved photos using AI."}>
+              <Sparkles size={17} /> {comparing ? "Analyzing..." : "Compare with AI"}
             </button>
           </div>
         </footer>
