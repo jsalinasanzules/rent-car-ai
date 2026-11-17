@@ -62,7 +62,7 @@ const ZONES: { value: Zone; label: string }[] = [
   { value: "detail", label: "Detalle adicional" },
 ];
 
-const MAX_FILE_SIZE_MB = 12;
+const MAX_FILE_SIZE_MB = 7;
 const ACCEPTED_TYPES = ["image/jpeg", "image/png", "image/webp"];
 
 function App() {
