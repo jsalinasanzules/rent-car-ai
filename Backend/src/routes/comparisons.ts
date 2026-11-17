@@ -179,7 +179,7 @@ export async function registerComparisonRoutes(app: FastifyInstance): Promise<vo
           }
           const buffer = Buffer.from(await data.arrayBuffer());
           if (buffer.byteLength === 0 || buffer.byteLength > MAX_AI_IMAGE_BYTES) {
-            throw new ClaudeVisionError("Una fotografía supera el límite de 7 MB para Claude Vision.", 413, "AI_IMAGE_SIZE_LIMIT");
+            throw new ClaudeVisionError("Una fotografía supera el límite de 7 MB para el análisis de IA.", 413, "AI_IMAGE_SIZE_LIMIT");
           }
           downloaded.push({
             buffer,
@@ -274,7 +274,7 @@ export async function registerComparisonRoutes(app: FastifyInstance): Promise<vo
           updated_at: new Date().toISOString(),
         })
         .eq("id", comparisonId);
-      request.log.error({ code: providerError.code, comparisonId }, "Claude Vision comparison failed");
+      request.log.error({ code: providerError.code, comparisonId }, "AI Vision comparison failed");
       return reply.code(providerError.statusCode).send({
         error: providerError.code,
         message: providerError.message,
