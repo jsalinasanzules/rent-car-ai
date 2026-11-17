@@ -34,7 +34,9 @@ Last updated: 2026-11-16
 - TASK-001 backend scaffold created: Fastify, Zod config, Supabase server client, SQL model, private bucket, health endpoint and starter tests. Runtime checks and ordered migration application still need confirmation.
 - TASK-003 implemented: vehicle data form, explicit save action, multipart POST /api/inspections, two inspection records, private image uploads, metadata persistence, success/error/loading UI.
 - User reports migration 001 already applied. Must now apply migration 002 after 001 before testing the new no-auth prototype persistence flow.
-- The save flow does not invoke AI. TASK-004 remains pending.
+- User confirmed vehicle records and photos now persist successfully in Supabase; TASK-001 and TASK-003 can be marked Done based on that end-to-end confirmation.
+- TASK-004 Claude Vision implementation added: backend service calling Anthropic Messages API, strict Zod output validation, POST /api/comparisons, private Storage downloads, same-vehicle baseline/current matching, max 5 zone pairs and 7 MB/image limits, unique pair idempotency, persisted per-zone results/findings/model/prompt/token usage, and frontend result display.
+- Migration 003_claude_vision_comparisons.sql is required before running comparison. Configure ANTHROPIC_API_KEY and optional CLAUDE_MODEL in Backend/.env. No live Claude call or local tests/build has been run yet. Keep the unauthenticated API local/private.
 - Frontend and backend automated checks have not been run in this session; record only actual local results.
 
 ## Next steps
