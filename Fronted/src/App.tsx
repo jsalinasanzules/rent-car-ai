@@ -180,35 +180,58 @@ function App() {
     try {
       const response = await fetch(`${API_BASE_URL}/inspections/${encodeURIComponent(id)}`);
       const data = await response.json() as {
-        error?: string; message?: string;
-        inspection: { id: string; type: string; inspectedAt: string };
-        vehicle: { make: string; model: string; modelYear: number | null; licensePlate: string; vin: string };
-        photos: Array<{ id: string; zone: Zone; filename: string; mimeType: string; sizeBytes: number; url: string }>;
+        error?: string; message?: string; selectedInspectionId: string;
+        inspections: {
+          baseline: { id: string; type: string; inspectedAt: string; status: string } | null;
+          current: { id: string; type: string; inspectedAt: string; status: string } | null;
+        };
+        vehicle: { id: string; make: string; model: string; modelYear: number | null; licensePlate: string; vin: string };
+        photos: {
+          baseline: Array<{ id: string; zone: Zone; filename: string; mimeType: string; sizeBytes: number; url: string }>;
+          current: Array<{ id: string; zone: Zone; filename: string; mimeType: string; sizeBytes: number; url: string }>;
+        };
+        comparison: (ComparisonResult & { createdAt: string; completedAt: string | null }) | null;
       };
       if (!response.ok) throw new Error(data.message || data.error || "Unable to load this inspection.");
-      if (data.inspection.type !== "BASELINE") throw new Error("This ID belongs to a CURRENT inspection. Please enter a BASELINE inspection ID.");
-      if (!data.photos.length) throw new Error("This inspection has no saved photos.");
-      const nextPhotos: Photo[] = data.photos.map((photo) => ({
-        id: photo.id,
-        preview: photo.url,
-        filename: photo.filename,
-        sizeBytes: photo.sizeBytes,
-        zone: photo.zone,
-        isSaved: true,
+      const toPhotos = (items: typeof data.photos.baseline): Photo[] => items.map((photo) => ({
+        id: photo.id, preview: photo.url, filename: photo.filename,
+        sizeBytes: photo.sizeBytes, zone: photo.zone, isSaved: true,
       }));
-      setBaseline(nextPhotos);
-      setCurrent([]);
+      const baselinePhotos = toPhotos(data.photos.baseline);
+      const currentPhotos = toPhotos(data.photos.current);
+      if (!baselinePhotos.length && !currentPhotos.length) throw new Error("This inspection has no saved photos.");
+      setBaseline(baselinePhotos);
+      setCurrent(currentPhotos);
       setVehicle({
-        make: data.vehicle.make,
-        model: data.vehicle.model,
+        make: data.vehicle.make, model: data.vehicle.model,
         modelYear: data.vehicle.modelYear ? String(data.vehicle.modelYear) : "",
-        licensePlate: data.vehicle.licensePlate,
-        vin: data.vehicle.vin,
+        licensePlate: data.vehicle.licensePlate, vin: data.vehicle.vin,
       });
-      setLoadedBaselineId(data.inspection.id);
-      setSavedResult(null);
-      setComparison(null);
-      setNotice(`Baseline inspection loaded · ${new Date(data.inspection.inspectedAt).toLocaleString()}. Add the new inspection photos to continue.`);
+      const baselineId = data.inspections.baseline?.id ?? null;
+      const currentId = data.inspections.current?.id ?? null;
+      setLoadedBaselineId(baselineId);
+      if (baselineId && currentId) {
+        setSavedResult({
+          vehicleId: data.vehicle.id,
+          inspections: { baseline: baselineId, current: currentId },
+          images: [
+            ...data.photos.baseline.map((photo) => ({ id: photo.id, zone: photo.zone, inspection_id: baselineId })),
+            ...data.photos.current.map((photo) => ({ id: photo.id, zone: photo.zone, inspection_id: currentId })),
+          ],
+          message: "Saved inspection pair loaded.",
+        });
+      } else {
+        setSavedResult(null);
+      }
+      setComparison(data.comparison?.status === "COMPLETED" ? data.comparison : null);
+      const loadedCount = baselinePhotos.length + currentPhotos.length;
+      const aiMessage = data.comparison?.status === "COMPLETED"
+        ? "Saved AI analysis restored."
+        : data.comparison
+          ? `Saved AI analysis status: ${data.comparison.status}.`
+          : baselineId && currentId ? "No AI analysis exists for this pair yet."
+          : "Add a new Current inspection to this saved Baseline.";
+      setNotice(`${loadedCount} saved photo(s) loaded. ${aiMessage}`);
     } catch (error) {
       setNotice(error instanceof Error ? error.message : "Unable to load the saved inspection.");
     } finally {
