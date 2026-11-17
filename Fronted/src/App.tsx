@@ -296,9 +296,9 @@ function App() {
     <article className="photo-card" key={photo.id}>
       <div className="photo-preview">
         <img src={photo.preview} alt={photo.filename || photo.file?.name || "Inspection photo"} />
-        <button className="icon-button remove-photo" onClick={() => removePhoto(side, photo.id)} aria-label="Remove photo" title="Remove">
+        {!photo.isSaved && <button className="icon-button remove-photo" onClick={() => removePhoto(side, photo.id)} aria-label="Remove photo" title="Remove">
           <Trash2 size={15} />
-        </button>
+        </button>}
         <span className="photo-size">{((photo.sizeBytes ?? photo.file?.size ?? 0) / 1024 / 1024).toFixed(1)} MB</span>
       </div>
       <div className="photo-details">
@@ -308,6 +308,7 @@ function App() {
           <select
             id={`zone-${photo.id}`}
             value={photo.zone}
+            disabled={photo.isSaved}
             onChange={(event) => assignZone(side, photo.id, event.target.value as Zone | "")}
           >
             <option value="">Select an area...</option>
@@ -358,9 +359,9 @@ function App() {
         ) : (
           <>
             <div className="photo-grid">{photos.map((photo) => renderPhotoCard(photo, side))}</div>
-            <button className="add-more-button" onClick={() => openPicker(side)}>
+            {!(isBaseline && loadedBaselineId) && <button className="add-more-button" onClick={() => openPicker(side)}>
               <Plus size={16} /> Add more photos
-            </button>
+            </button>}
           </>
         )}
       </section>
