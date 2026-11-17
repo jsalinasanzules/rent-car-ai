@@ -4,7 +4,8 @@
 Allow an operator to load a previously saved BASELINE inspection by its exact Inspection ID, then create a new CURRENT inspection for the same vehicle and compare the pair with the configured AI provider.
 
 ## API
-- `GET /api/inspections/:inspectionId`: return inspection metadata, vehicle details, photo metadata, and short-lived signed URLs for images in the private Storage bucket.
+- `GET /api/inspections/:inspectionId`: restore the exact saved baseline/current pair, all photo metadata with short-lived signed URLs, and persisted AI comparison results/findings when available. Accept either ID from the pair.
+- `inspection_pairs` persists the baseline/current relationship independently of AI execution; migration 004 backfills pairs already represented in the comparisons table.
 - `POST /api/inspections/:baselineInspectionId/current`: validate that the referenced inspection is BASELINE, create a new CURRENT inspection for its vehicle, upload only new photos, and return the two IDs for the existing baseline and new current inspection.
 - Validate UUID format, photo MIME/size/zone, unique zones, and at least one zone shared with the baseline.
 - Do not update, replace, or delete the baseline inspection, its image rows, or Storage objects.
@@ -18,7 +19,8 @@ Allow an operator to load a previously saved BASELINE inspection by its exact In
 - Display the baseline ID so the operator can confirm the selected reference.
 
 ## Acceptance criteria
-- A valid BASELINE ID loads the correct vehicle and saved photos.
+- A valid ID from either side restores all photos from both inspections in its saved pair.
+- A completed AI result, zone results, and findings are restored without another AI call; if no result exists, the operator can explicitly run the comparison.
 - Invalid or missing IDs produce clear errors.
 - A CURRENT inspection ID is rejected as a baseline.
 - New CURRENT inspection is saved without changing any original baseline row or object.
