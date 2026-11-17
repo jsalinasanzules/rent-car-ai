@@ -1,6 +1,8 @@
 import cors from "@fastify/cors";
+import multipart from "@fastify/multipart";
 import Fastify, { type FastifyInstance } from "fastify";
 import { getEnv } from "./config/env.js";
+import { registerInspectionRoutes } from "./routes/inspections.js";
 
 export async function buildApp(): Promise<FastifyInstance> {
   const env = getEnv();
@@ -13,11 +15,16 @@ export async function buildApp(): Promise<FastifyInstance> {
     origin: env.CORS_ORIGIN,
     methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
   });
+  await app.register(multipart, {
+    limits: { fileSize: 12 * 1024 * 1024, files: 22, fields: 2, parts: 24 },
+  });
 
   app.get("/api/health", async () => ({
     status: "ok",
     service: "rent-car-ai-backend",
   }));
+
+  await registerInspectionRoutes(app);
 
   app.setErrorHandler((error, _request, reply) => {
     app.log.error({ err: error }, "Request failed");
