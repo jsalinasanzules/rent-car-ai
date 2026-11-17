@@ -1,6 +1,6 @@
 import type { FastifyInstance } from "fastify";
 import { randomUUID } from "node:crypto";
-import { supabase } from "../infrastructure/supabase/client.js";
+import { getSupabaseClient } from "../infrastructure/supabase/client.js";
 
 const BUCKET = "vehicle-inspection-photos";
 const MAX_FILE_BYTES = 12 * 1024 * 1024;
@@ -97,6 +97,7 @@ function extensionFor(mimetype: string): string {
 
 export async function registerInspectionRoutes(app: FastifyInstance): Promise<void> {
   app.post("/api/inspections", async (request, reply) => {
+    const supabase = getSupabaseClient();
     const files = new Map<string, UploadedFile>();
     let rawPayload: unknown;
 
