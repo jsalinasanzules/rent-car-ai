@@ -192,7 +192,7 @@ function App() {
 
   async function saveInspections() {
     if (!canSave) {
-      setNotice("Complete marca y modelo, agregue fotografías a ambas inspecciones y asigne una area a cada imagen. Debe existir al menos una area coincidente.");
+      setNotice("Enter the make and model, add photos to both inspections, and assign an area to every image. At least one matching area is required.");
       return;
     }
 
