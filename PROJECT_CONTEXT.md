@@ -41,6 +41,9 @@ Never place secrets in VITE_ variables or commit real credentials.
 5. Backend validates Claude's structured response, persists findings, and returns results.
 6. Frontend displays potential findings for human review.
 
+## Reusing a saved baseline
+The operator can load a saved BASELINE inspection by its exact UUID. The API returns vehicle details and private photo previews via short-lived signed URLs. The baseline is read-only. The operator adds new CURRENT photos; the API creates a separate CURRENT inspection for the same vehicle and uploads only those new images. The existing comparison endpoint analyzes the original baseline against the new current inspection. Never mutate baseline records or Storage objects.
+
 ## Expected result
 Overall status: NEW_DAMAGE, NO_CHANGE, or INCONCLUSIVE. Each finding includes type, zone, location description, description, severity (LOW/MEDIUM/HIGH/UNKNOWN), confidence estimate (0–1, not calibrated), and requires_human_review=true.
 
