@@ -87,7 +87,7 @@ function App() {
   const canSave = Boolean(
     vehicle.make.trim() && vehicle.model.trim() &&
     baseline.length > 0 && current.length > 0 &&
-    allAssigned && matchedZones.size > 0 && !saving
+    allAssigned && matchedZones.size > 0 && !saving && !savedResult
   );
 
   function updateSide(side: Side, updater: (photos: Photo[]) => Photo[]) {
@@ -364,7 +364,7 @@ function App() {
           </span>
           <div className="action-buttons">
             <button className="save-button" onClick={() => void saveInspections()} disabled={!canSave}>
-              <Save size={17} /> {saving ? "Guardando..." : savedResult ? "Guardar cambios" : "Guardar inspecciones"}
+              <Save size={17} /> {saving ? "Guardando..." : savedResult ? "Guardado" : "Guardar inspecciones"}
             </button>
             <button className="compare-button" disabled title="El procesamiento con IA se implementará después de completar el guardado.">
               <Sparkles size={17} /> Comparar con IA <span className="button-soon">Próximamente</span>
