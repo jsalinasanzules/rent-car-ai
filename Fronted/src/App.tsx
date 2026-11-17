@@ -151,7 +151,7 @@ function App() {
       const occupied = photos.find((photo) => photo.zone === value && photo.id !== id);
       if (value && occupied) {
         const label = ZONES.find((zone) => zone.value === value)?.label ?? value;
-        if (!window.confirm(`Ya existe una fotografía para "${label}". ¿Desea reemplazarla?`)) return photos;
+        if (!window.confirm(`A photo is already assigned to "${label}". Do you want to replace it?`)) return photos;
         URL.revokeObjectURL(occupied.preview);
         return photos
           .filter((photo) => photo.id !== occupied.id)
@@ -297,7 +297,7 @@ function App() {
             <span className="upload-icon"><UploadCloud size={23} /></span>
             <strong>Select photos</strong>
             <span>Drag images here or click to browse</span>
-            <small>JPG, PNG o WEBP · Máximo {MAX_FILE_SIZE_MB} MB por imagen</small>
+            <small>JPG, PNG, or WEBP · Up to {MAX_FILE_SIZE_MB} MB per imagen</small>
           </button>
         ) : (
           <>
