@@ -62,7 +62,7 @@ Set these server-only values in `.env`:
 
 ```env
 ANTHROPIC_API_KEY=your-anthropic-api-key
-CLAUDE_MODEL=claude-sonnet-4-5
+CLAUDE_MODEL=claude-sonnet-5-5
 ```
 
 Restart the backend after changing environment variables. Never put the Anthropic key in `Fronted/.env` or any `VITE_` variable.
