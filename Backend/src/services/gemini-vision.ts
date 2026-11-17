@@ -22,7 +22,7 @@ export async function compareZoneImagesWithGemini(
     }
   }
 
-  const model = env.GEMINI_MODEL || "gemini-2.5-flash-lite";
+  const model = env.GEMINI_MODEL || "gemini-3.5-flash-lite";
   const prompt = `Compare Image A (BASELINE / earlier inspection) with Image B (CURRENT / later inspection) for the same vehicle zone: "${zone}".
 Identify only damage that is visibly new in Image B. Ignore differences caused by lighting, reflections, shadows, dirt, weather, image compression, and camera angle or framing. Do not infer hidden damage, cause, repair cost, or details that cannot be seen. If the views are not sufficiently comparable, visibility is poor, or evidence is ambiguous, return INCONCLUSIVE.
 Return only one JSON object with this exact shape:
