@@ -52,6 +52,36 @@ npm test
 npm run build
 ```
 
+## Claude Vision comparison (TASK-004)
+
+Apply the next migration after 001 and 002:
+
+3. `supabase/migrations/003_claude_vision_comparisons.sql`
+
+Set these server-only values in `.env`:
+
+```env
+ANTHROPIC_API_KEY=your-anthropic-api-key
+CLAUDE_MODEL=claude-sonnet-4-5
+```
+
+Restart the backend after changing environment variables. Never put the Anthropic key in `Fronted/.env` or any `VITE_` variable.
+
+After saving a vehicle and both inspections, call `POST /api/comparisons` with JSON:
+
+```json
+{
+  "baselineInspectionId": "uuid-from-save-response",
+  "currentInspectionId": "uuid-from-save-response"
+}
+```
+
+The backend verifies that the inspections are a baseline/current pair for the same vehicle, matches zones, downloads the original images from the private Storage bucket, and sends each pair to Claude Vision. The prototype currently limits a request to five matching zones and 7 MB per image to control cost. The API stores per-zone results, findings, model/prompt metadata and token usage. A baseline/current pair is processed only once; failures are not retried automatically because inference is paid.
+
+Overall outcomes: `NEW_DAMAGE`, `NO_CHANGE`, or `INCONCLUSIVE`. All findings require human review; confidence is an uncalibrated estimate.
+
+**Prototype security boundary:** this endpoint has no user authentication. Keep the API local/private and do not expose it publicly. Add authentication and per-resource authorization before production use.
+
 ## Environment
 
-See `.env.example`. Supabase and Anthropic credentials are server-only. Anthropic variables are reserved for TASK-004 and are optional until that task is implemented. The frontend receives only `VITE_API_BASE_URL`.
+See `.env.example`. Supabase and Anthropic credentials are server-only. The frontend receives only `VITE_API_BASE_URL`.
