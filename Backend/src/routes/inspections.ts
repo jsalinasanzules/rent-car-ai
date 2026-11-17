@@ -98,6 +98,9 @@ function extensionFor(mimetype: string): string {
 export async function registerInspectionRoutes(app: FastifyInstance): Promise<void> {
   app.get("/api/inspections/:inspectionId", async (request, reply) => {
     const { inspectionId } = request.params as { inspectionId: string };
+    if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(inspectionId)) {
+      return reply.code(400).send({ error: "INVALID_INSPECTION_ID", message: "Enter a valid inspection ID." });
+    }
     const supabase = getSupabaseClient();
     const { data: inspection, error: inspectionError } = await supabase
       .from("inspections")
@@ -147,6 +150,9 @@ export async function registerInspectionRoutes(app: FastifyInstance): Promise<vo
 
   app.post("/api/inspections/:baselineInspectionId/current", async (request, reply) => {
     const { baselineInspectionId } = request.params as { baselineInspectionId: string };
+    if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(baselineInspectionId)) {
+      return reply.code(400).send({ error: "INVALID_INSPECTION_ID", message: "Enter a valid inspection ID." });
+    }
     const supabase = getSupabaseClient();
     const files = new Map<string, UploadedFile>();
     let rawPayload: unknown;
