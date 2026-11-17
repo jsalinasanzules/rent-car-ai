@@ -39,6 +39,8 @@ Last updated: 2026-11-16
 - Migration 003_claude_vision_comparisons.sql is required before running comparison. Configure ANTHROPIC_API_KEY and optional CLAUDE_MODEL in Backend/.env. No live Claude call or local tests/build has been run yet. Keep the unauthenticated API local/private.
 - Frontend and backend automated checks have not been run in this session; record only actual local results.
 
+- TASK-005 implementation on `feature/gemini-vision-provider`: GET inspection by ID returns vehicle/photos with 1-hour signed Storage URLs; only BASELINE IDs can be reused. POST `/api/inspections/:baselineInspectionId/current` creates a separate CURRENT inspection and uploads new photos only. Frontend loads the baseline as read-only, adds new CURRENT photos, saves a new inspection, then compares using existing comparison endpoint. Original baseline records and objects are not modified. Migration 004 now stores baseline/current pair relationships independently of AI and backfills pairs represented by historical comparisons. GET by either inspection ID returns all photos in both sides and the saved comparison, zone results, and findings when present. Frontend restores saved photos and displays completed AI results without rerunning inference. Build/runtime/API verification is still pending.
+
 ## Next steps
 1. User applies migration 002 in Supabase and runs backend/frontend.
 2. Verify one complete vehicle + baseline/current photo submission and inspect rows/Storage objects.

@@ -1,6 +1,7 @@
 import type { FastifyInstance } from "fastify";
 import { getEnv } from "../config/env.js";
 import { getSupabaseClient } from "../infrastructure/supabase/client.js";
+import { compareZoneImagesWithGemini } from "../services/gemini-vision.js";
 import {
   ClaudeVisionError,
   MAX_AI_IMAGE_BYTES,
@@ -54,10 +55,13 @@ export async function registerComparisonRoutes(app: FastifyInstance): Promise<vo
     }
 
     const env = getEnv();
-    if (!env.ANTHROPIC_API_KEY) {
+    const providerKey = env.AI_PROVIDER === "gemini" ? env.GEMINI_API_KEY : env.ANTHROPIC_API_KEY;
+    if (!providerKey) {
       return reply.code(503).send({
         error: "AI_NOT_CONFIGURED",
-        message: "Configure ANTHROPIC_API_KEY en Backend/.env y reinicie el backend.",
+        message: env.AI_PROVIDER === "gemini"
+          ? "Configure GEMINI_API_KEY en Backend/.env y reinicie el backend."
+          : "Configure ANTHROPIC_API_KEY en Backend/.env y reinicie el backend.",
       });
     }
 
@@ -122,7 +126,9 @@ export async function registerComparisonRoutes(app: FastifyInstance): Promise<vo
         current_inspection_id: currentId,
         status: "PENDING",
         started_at: new Date().toISOString(),
-        model: env.CLAUDE_MODEL || "claude-sonnet-5-5",
+        model: env.AI_PROVIDER === "gemini"
+          ? env.GEMINI_MODEL
+          : (env.CLAUDE_MODEL || "claude-sonnet-5-5"),
         prompt_version: PROMPT_VERSION,
       })
       .select("id")
@@ -150,7 +156,9 @@ export async function registerComparisonRoutes(app: FastifyInstance): Promise<vo
     const zoneResults: Array<{ zone: string; result: string; summary: string }> = [];
     let totalInputTokens = 0;
     let totalOutputTokens = 0;
-    let model = env.CLAUDE_MODEL || "claude-sonnet-5-5";
+    let model = env.AI_PROVIDER === "gemini"
+      ? env.GEMINI_MODEL
+      : (env.CLAUDE_MODEL || "claude-sonnet-5-5");
 
     try {
       for (const zone of zones) {
@@ -171,7 +179,7 @@ export async function registerComparisonRoutes(app: FastifyInstance): Promise<vo
           }
           const buffer = Buffer.from(await data.arrayBuffer());
           if (buffer.byteLength === 0 || buffer.byteLength > MAX_AI_IMAGE_BYTES) {
-            throw new ClaudeVisionError("Una fotografía supera el límite de 7 MB para Claude Vision.", 413, "AI_IMAGE_SIZE_LIMIT");
+            throw new ClaudeVisionError("Una fotografía supera el límite de 7 MB para el análisis de IA.", 413, "AI_IMAGE_SIZE_LIMIT");
           }
           downloaded.push({
             buffer,
@@ -179,7 +187,9 @@ export async function registerComparisonRoutes(app: FastifyInstance): Promise<vo
           });
         }
 
-        const vision = await compareZoneImages(zone, downloaded[0]!, downloaded[1]!, env);
+        const vision = env.AI_PROVIDER === "gemini"
+          ? await compareZoneImagesWithGemini(zone, downloaded[0]!, downloaded[1]!, env)
+          : await compareZoneImages(zone, downloaded[0]!, downloaded[1]!, env);
         model = vision.model;
         totalInputTokens += vision.inputTokens;
         totalOutputTokens += vision.outputTokens;
@@ -264,7 +274,7 @@ export async function registerComparisonRoutes(app: FastifyInstance): Promise<vo
           updated_at: new Date().toISOString(),
         })
         .eq("id", comparisonId);
-      request.log.error({ code: providerError.code, comparisonId }, "Claude Vision comparison failed");
+      request.log.error({ code: providerError.code, comparisonId }, "AI Vision comparison failed");
       return reply.code(providerError.statusCode).send({
         error: providerError.code,
         message: providerError.message,

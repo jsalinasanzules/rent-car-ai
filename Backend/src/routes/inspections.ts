@@ -96,6 +96,213 @@ function extensionFor(mimetype: string): string {
 }
 
 export async function registerInspectionRoutes(app: FastifyInstance): Promise<void> {
+  app.get("/api/inspections/:inspectionId", async (request, reply) => {
+    const { inspectionId } = request.params as { inspectionId: string };
+    if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(inspectionId)) {
+      return reply.code(400).send({ error: "INVALID_INSPECTION_ID", message: "Enter a valid inspection ID." });
+    }
+    const supabase = getSupabaseClient();
+    const { data: selected, error: selectedError } = await supabase
+      .from("inspections")
+      .select("id, vehicle_id, inspection_type, inspected_at, status, owner_id")
+      .eq("id", inspectionId)
+      .maybeSingle();
+    if (selectedError) {
+      request.log.error({ err: selectedError }, "Could not load saved inspection");
+      return reply.code(500).send({ error: "INSPECTION_LOOKUP_FAILED", message: "Unable to retrieve the saved inspection." });
+    }
+    if (!selected) return reply.code(404).send({ error: "INSPECTION_NOT_FOUND", message: "No inspection was found with that ID." });
+
+    const { data: savedPair, error: savedPairError } = await supabase
+      .from("inspection_pairs")
+      .select("baseline_inspection_id, current_inspection_id")
+      .or(`baseline_inspection_id.eq.${inspectionId},current_inspection_id.eq.${inspectionId}`)
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    if (savedPairError) {
+      request.log.error({ err: savedPairError }, "Could not load saved inspection pair");
+      return reply.code(500).send({ error: "INSPECTION_PAIR_LOOKUP_FAILED", message: "Unable to retrieve the related inspection." });
+    }
+
+    const { data: comparison, error: comparisonError } = savedPair
+      ? await supabase.from("comparisons")
+          .select("id, baseline_inspection_id, current_inspection_id, status, overall_result, summary, model, prompt_version, input_tokens, output_tokens, created_at, completed_at")
+          .eq("baseline_inspection_id", savedPair.baseline_inspection_id)
+          .eq("current_inspection_id", savedPair.current_inspection_id)
+          .order("created_at", { ascending: false })
+          .limit(1)
+          .maybeSingle()
+      : { data: null, error: null };
+    if (comparisonError) {
+      request.log.error({ err: comparisonError }, "Could not load saved AI comparison");
+      return reply.code(500).send({ error: "COMPARISON_LOOKUP_FAILED", message: "Unable to retrieve the saved AI result." });
+    }
+
+    const ids = savedPair
+      ? [savedPair.baseline_inspection_id, savedPair.current_inspection_id]
+      : [selected.id];
+    const [{ data: inspections, error: pairError }, { data: imageRows, error: imagesError }] = await Promise.all([
+      supabase.from("inspections").select("id, vehicle_id, inspection_type, inspected_at, status").in("id", ids),
+      supabase.from("inspection_images").select("id, inspection_id, zone, storage_bucket, storage_path, original_filename, mime_type, size_bytes").in("inspection_id", ids).order("created_at"),
+    ]);
+    if (pairError || imagesError) {
+      request.log.error({ err: pairError ?? imagesError }, "Could not load inspection pair");
+      return reply.code(500).send({ error: "INSPECTION_DETAILS_FAILED", message: "Unable to retrieve the inspection details." });
+    }
+    const pairRows = inspections ?? [];
+    const baselineRow = pairRows.find((item) => item.inspection_type === "BASELINE") ?? (selected.inspection_type === "BASELINE" ? selected : null);
+    const currentRow = pairRows.find((item) => item.inspection_type === "CURRENT") ?? null;
+    const vehicleId = selected.vehicle_id;
+    const { data: vehicle, error: vehicleError } = await supabase
+      .from("vehicles").select("id, make, model, model_year, license_plate, vin").eq("id", vehicleId).single();
+    if (vehicleError || !vehicle) {
+      request.log.error({ err: vehicleError }, "Could not load saved vehicle");
+      return reply.code(500).send({ error: "VEHICLE_LOOKUP_FAILED", message: "Unable to retrieve the vehicle details." });
+    }
+
+    const photos: Record<string, Array<Record<string, unknown>>> = { baseline: [], current: [] };
+    for (const image of imageRows ?? []) {
+      if (image.storage_bucket !== BUCKET || !image.storage_path.startsWith(`prototype/${vehicleId}/`)) {
+        return reply.code(500).send({ error: "INVALID_STORED_IMAGE", message: "An inspection image has an invalid storage reference." });
+      }
+      const { data: signed, error: signedError } = await supabase.storage.from(BUCKET).createSignedUrl(image.storage_path, 3600);
+      if (signedError || !signed?.signedUrl) {
+        request.log.error({ err: signedError }, "Could not create inspection image URL");
+        return reply.code(502).send({ error: "IMAGE_ACCESS_FAILED", message: "Unable to access one of the saved inspection photos." });
+      }
+      const side = image.inspection_id === baselineRow?.id ? "baseline" : "current";
+      photos[side]!.push({
+        id: image.id, zone: image.zone, filename: image.original_filename,
+        mimeType: image.mime_type, sizeBytes: Number(image.size_bytes), url: signed.signedUrl,
+      });
+    }
+
+    let aiResult = null;
+    if (comparison) {
+      const [{ data: zones, error: zonesError }, { data: findings, error: findingsError }] = await Promise.all([
+        supabase.from("comparison_zone_results").select("zone, result, summary").eq("comparison_id", comparison.id).order("zone"),
+        supabase.from("comparison_findings").select("id, zone, finding_type, location_description, description, severity, confidence, requires_human_review").eq("comparison_id", comparison.id),
+      ]);
+      if (zonesError || findingsError) {
+        request.log.error({ err: zonesError ?? findingsError }, "Could not load saved AI findings");
+        return reply.code(500).send({ error: "AI_RESULT_LOOKUP_FAILED", message: "Unable to retrieve the saved AI findings." });
+      }
+      aiResult = {
+        comparisonId: comparison.id,
+        status: comparison.status,
+        result: comparison.overall_result,
+        summary: comparison.summary ?? "",
+        model: comparison.model ?? "",
+        usage: { inputTokens: comparison.input_tokens ?? 0, outputTokens: comparison.output_tokens ?? 0 },
+        zones: zones ?? [],
+        findings: findings ?? [],
+        requiresHumanReview: true,
+        createdAt: comparison.created_at,
+        completedAt: comparison.completed_at,
+      };
+    }
+    return reply.send({
+      selectedInspectionId: selected.id,
+      vehicle: { id: vehicle.id, make: vehicle.make ?? "", model: vehicle.model ?? "", modelYear: vehicle.model_year, licensePlate: vehicle.license_plate ?? "", vin: vehicle.vin ?? "" },
+      inspections: {
+        baseline: baselineRow ? { id: baselineRow.id, type: baselineRow.inspection_type, inspectedAt: baselineRow.inspected_at, status: baselineRow.status } : null,
+        current: currentRow ? { id: currentRow.id, type: currentRow.inspection_type, inspectedAt: currentRow.inspected_at, status: currentRow.status } : null,
+      },
+      photos,
+      comparison: aiResult,
+    });
+  });
+
+  app.post("/api/inspections/:baselineInspectionId/current", async (request, reply) => {
+    const { baselineInspectionId } = request.params as { baselineInspectionId: string };
+    if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(baselineInspectionId)) {
+      return reply.code(400).send({ error: "INVALID_INSPECTION_ID", message: "Enter a valid inspection ID." });
+    }
+    const supabase = getSupabaseClient();
+    const files = new Map<string, UploadedFile>();
+    let rawPayload: unknown;
+    try {
+      const parts = request.parts({ limits: { files: 11, fields: 1, parts: 12, fileSize: MAX_FILE_BYTES } });
+      for await (const part of parts) {
+        if (part.type === "file") {
+          if (!ALLOWED_MIME.has(part.mimetype)) return reply.code(415).send({ error: "UNSUPPORTED_MEDIA_TYPE", message: "Only JPG, PNG, or WEBP images are allowed." });
+          const buffer = await part.toBuffer();
+          if (part.file.truncated || buffer.byteLength > MAX_FILE_BYTES) return reply.code(413).send({ error: "FILE_TOO_LARGE", message: "Each image must be no larger than 12 MB." });
+          files.set(part.fieldname, { buffer, filename: part.filename, mimetype: part.mimetype });
+        } else if (part.fieldname === "payload") {
+          try { rawPayload = JSON.parse(String(part.value)); }
+          catch { return reply.code(400).send({ error: "INVALID_PAYLOAD", message: "The submitted data is not valid JSON." }); }
+        }
+      }
+      if (!isRecord(rawPayload) || !isRecord(rawPayload.current) || !Array.isArray(rawPayload.current.photos) || rawPayload.current.photos.length === 0) {
+        return reply.code(400).send({ error: "INVALID_CURRENT_INSPECTION", message: "Add at least one photo to the new inspection." });
+      }
+      const photos = rawPayload.current.photos.map((photo) => {
+        if (!isRecord(photo) || typeof photo.zone !== "string" || typeof photo.fileField !== "string" || !ALLOWED_ZONES.has(photo.zone) || !files.has(photo.fileField)) {
+          throw new Error("A photo has an invalid zone or missing file.");
+        }
+        return { zone: photo.zone, fileField: photo.fileField };
+      });
+      if (new Set(photos.map((photo) => photo.zone)).size !== photos.length) throw new Error("Only one photo per vehicle area is allowed.");
+      const { data: baseline, error: baselineError } = await supabase
+        .from("inspections").select("id, vehicle_id, owner_id, inspection_type").eq("id", baselineInspectionId).maybeSingle();
+      if (baselineError) throw baselineError;
+      if (!baseline) return reply.code(404).send({ error: "INSPECTION_NOT_FOUND", message: "The selected baseline inspection was not found." });
+      if (baseline.inspection_type !== "BASELINE") return reply.code(400).send({ error: "INVALID_BASELINE_TYPE", message: "Only a BASELINE inspection can be reused as a reference." });
+      const { data: baselineImages, error: baselineImagesError } = await supabase
+        .from("inspection_images").select("zone").eq("inspection_id", baselineInspectionId);
+      if (baselineImagesError) throw baselineImagesError;
+      const baselineZones = new Set((baselineImages ?? []).map((image) => image.zone));
+      if (!photos.some((photo) => baselineZones.has(photo.zone))) {
+        return reply.code(400).send({ error: "NO_MATCHING_ZONES", message: "At least one new photo must match an area in the saved inspection." });
+      }
+      const { data: current, error: currentError } = await supabase.from("inspections").insert({
+        owner_id: baseline.owner_id,
+        vehicle_id: baseline.vehicle_id,
+        inspection_type: "CURRENT",
+        inspected_at: new Date().toISOString(),
+        status: "COMPLETED",
+      }).select("id").single();
+      if (currentError) throw currentError;
+      const uploadedPaths: string[] = [];
+      try {
+        const rows = [];
+        for (const photo of photos) {
+          const file = files.get(photo.fileField)!;
+          const path = `prototype/${baseline.vehicle_id}/${current.id}/${photo.zone}-${randomUUID()}.${extensionFor(file.mimetype)}`;
+          const { error } = await supabase.storage.from(BUCKET).upload(path, file.buffer, { contentType: file.mimetype, upsert: false });
+          if (error) throw error;
+          uploadedPaths.push(path);
+          rows.push({ owner_id: baseline.owner_id, inspection_id: current.id, zone: photo.zone, storage_bucket: BUCKET, storage_path: path, original_filename: file.filename.slice(0, 255), mime_type: file.mimetype, size_bytes: file.buffer.byteLength });
+        }
+        const { data: images, error: imageError } = await supabase.from("inspection_images").insert(rows)
+          .select("id, inspection_id, zone, original_filename, mime_type, size_bytes, created_at");
+        if (imageError) throw imageError;
+        const { error: pairError } = await supabase.from("inspection_pairs").insert({
+          baseline_inspection_id: baselineInspectionId,
+          current_inspection_id: current.id,
+          owner_id: baseline.owner_id,
+        });
+        if (pairError) throw pairError;
+        return reply.code(201).send({
+          status: "saved",
+          vehicleId: baseline.vehicle_id,
+          inspections: { baseline: baselineInspectionId, current: current.id },
+          images,
+          message: "New inspection saved. The original baseline was left unchanged.",
+        });
+      } catch (error) {
+        if (uploadedPaths.length) await supabase.storage.from(BUCKET).remove(uploadedPaths);
+        await supabase.from("inspections").delete().eq("id", current.id);
+        throw error;
+      }
+    } catch (error) {
+      request.log.error({ err: error }, "Failed to create a new inspection from saved baseline");
+      return reply.code(400).send({ error: "CURRENT_INSPECTION_FAILED", message: error instanceof Error ? error.message : "Unable to save the new inspection." });
+    }
+  });
+
   app.post("/api/inspections", async (request, reply) => {
     const supabase = getSupabaseClient();
     const files = new Map<string, UploadedFile>();
@@ -199,6 +406,12 @@ export async function registerInspectionRoutes(app: FastifyInstance): Promise<vo
           .insert(imageRows)
           .select("id, inspection_id, zone, original_filename, mime_type, size_bytes, created_at");
         if (imagesError) throw imagesError;
+        const { error: pairError } = await supabase.from("inspection_pairs").insert({
+          baseline_inspection_id: inspections.baseline,
+          current_inspection_id: inspections.current,
+          owner_id: null,
+        });
+        if (pairError) throw pairError;
 
         return reply.code(201).send({
           status: "saved",

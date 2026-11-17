@@ -52,20 +52,23 @@ npm test
 npm run build
 ```
 
-## Claude Vision comparison (TASK-004)
+## AI Vision comparison (TASK-004)
 
 Apply the next migration after 001 and 002:
 
 3. `supabase/migrations/003_claude_vision_comparisons.sql`
 
-Set these server-only values in `.env`:
+Gemini is the default provider for low-cost prototype testing. Create an API key in [Google AI Studio](https://aistudio.google.com/) and set these server-only values in `.env`:
 
 ```env
-ANTHROPIC_API_KEY=your-anthropic-api-key
-CLAUDE_MODEL=claude-sonnet-5-5
+AI_PROVIDER=gemini
+GEMINI_API_KEY=your-google-ai-studio-api-key
+GEMINI_MODEL=gemini-3.5-flash-lite
 ```
 
-Restart the backend after changing environment variables. Never put the Anthropic key in `Fronted/.env` or any `VITE_` variable.
+To use the existing paid Claude integration instead, set `AI_PROVIDER=claude` and configure `ANTHROPIC_API_KEY` plus `CLAUDE_MODEL`.
+
+Restart the backend after changing environment variables. Never put either provider key in `Fronted/.env` or any `VITE_` variable. Free-tier availability, model access, rate limits and quotas are controlled by Google and may change. Google AI Studio's free tier may use submitted content to improve its products; use only non-sensitive test photos until the data terms have been reviewed.
 
 After saving a vehicle and both inspections, call `POST /api/comparisons` with JSON:
 
@@ -76,7 +79,7 @@ After saving a vehicle and both inspections, call `POST /api/comparisons` with J
 }
 ```
 
-The backend verifies that the inspections are a baseline/current pair for the same vehicle, matches zones, downloads the original images from the private Storage bucket, and sends each pair to Claude Vision. The prototype currently limits a request to five matching zones and 7 MB per image to control cost. The API stores per-zone results, findings, model/prompt metadata and token usage. A baseline/current pair is processed only once; failures are not retried automatically because inference is paid.
+The backend verifies that the inspections are a baseline/current pair for the same vehicle, matches zones, downloads the original images from the private Storage bucket, and sends each pair to the configured provider (Gemini by default, Claude optionally). The prototype currently limits a request to five matching zones and 7 MB per image to control cost. The API stores per-zone results, findings, model/prompt metadata and token usage. A baseline/current pair is processed only once; failures are not retried automatically because inference is paid.
 
 Overall outcomes: `NEW_DAMAGE`, `NO_CHANGE`, or `INCONCLUSIVE`. All findings require human review; confidence is an uncalibrated estimate.
 
