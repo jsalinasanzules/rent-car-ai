@@ -122,7 +122,7 @@ export async function registerComparisonRoutes(app: FastifyInstance): Promise<vo
         current_inspection_id: currentId,
         status: "PENDING",
         started_at: new Date().toISOString(),
-        model: env.CLAUDE_MODEL || "claude-sonnet-4-5",
+        model: env.CLAUDE_MODEL || "claude-sonnet-5-5",
         prompt_version: PROMPT_VERSION,
       })
       .select("id")
@@ -150,7 +150,7 @@ export async function registerComparisonRoutes(app: FastifyInstance): Promise<vo
     const zoneResults: Array<{ zone: string; result: string; summary: string }> = [];
     let totalInputTokens = 0;
     let totalOutputTokens = 0;
-    let model = env.CLAUDE_MODEL || "claude-sonnet-4-5";
+    let model = env.CLAUDE_MODEL || "claude-sonnet-5-5";
 
     try {
       for (const zone of zones) {
@@ -179,7 +179,7 @@ export async function registerComparisonRoutes(app: FastifyInstance): Promise<vo
           });
         }
 
-        const vision = await compareZoneImages(zone, downloaded[0], downloaded[1], env);
+        const vision = await compareZoneImages(zone, downloaded[0]!, downloaded[1]!, env);
         model = vision.model;
         totalInputTokens += vision.inputTokens;
         totalOutputTokens += vision.outputTokens;
