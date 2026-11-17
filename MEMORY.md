@@ -4,10 +4,9 @@ Last updated: 2026-11-16
 
 ## Confirmed decisions
 - Frontend: React + TypeScript + Vite, all files under `Fronted/` (exact spelling).
-- Backend: separate Node.js + TypeScript HTTP API, all files under `Backend/`.
-- Backend framework: Fastify 5; environment validation: Zod; tests: Vitest.
+- Backend: separate Node.js + TypeScript HTTP API under `Backend/`, using Fastify 5.
+- Environment validation: Zod; multipart: @fastify/multipart; tests: Vitest.
 - Database: Supabase PostgreSQL; files: private Supabase Storage.
-- Backend connects to Supabase through server-side environment variables.
 - Claude Vision is called only by the Node.js backend using server-side ANTHROPIC_API_KEY and configurable CLAUDE_MODEL.
 - Frontend exposes VITE_API_BASE_URL only.
 - No AWS, Supabase Edge Functions, OpenCV, image enhancement, or queues in first prototype.
@@ -22,23 +21,24 @@ Last updated: 2026-11-16
 - Never store server secrets in Fronted/.env or VITE_ variables.
 - Root README documents how to run each app. Keep shared agent docs at root.
 
-## Security constraints
+## Security and prototype constraints
 - Never expose SUPABASE_SERVICE_ROLE_KEY or ANTHROPIC_API_KEY to browser code.
 - Keep Storage bucket private.
-- Reject arbitrary external image URLs.
-- Preserve original photos.
-- Do not fake upload or analysis success while backend is absent.
-- The Supabase service-role client bypasses RLS; every backend data route must authenticate callers and enforce owner/tenant checks independently.
-- Do not enable real-user routes until the authentication and tenant/owner model is agreed and cross-owner access tests pass.
+- Reject arbitrary external image URLs; preserve original photos.
+- The Supabase service-role client bypasses RLS.
+- User explicitly deferred authentication for the current prototype. Migration 002 allows null owner_id values; the API is for trusted local/prototype use only and must not be deployed as a public production service.
+- Add authentication and per-resource authorization before production exposure.
 
 ## Current progress
-- TASK-002 frontend photo selector is marked Done based on the user's confirmation that the verification item is resolved; individual command output was not captured in this session.
-- TASK-001 backend scaffold created under Backend/: Fastify API, Zod config validation, Supabase server client, initial migration, private Storage bucket definition, health endpoint, error handler, lint/typecheck/test/build scripts and starter tests.
-- TASK-001 remains In Progress: migration still needs applying to the actual Supabase project; RLS/Storage boundaries and API owner checks need integration testing; authentication/tenant model needs confirmation; backend checks need execution in a local checkout.
-- TASK-003 remains blocked pending TASK-001 security gates.
-- Compare button remains deliberately disabled until backend integration exists.
+- TASK-002 frontend photo selector marked Done based on user's confirmation that verification is resolved; individual command output was not captured in this session.
+- TASK-001 backend scaffold created: Fastify, Zod config, Supabase server client, SQL model, private bucket, health endpoint and starter tests. Runtime checks and ordered migration application still need confirmation.
+- TASK-003 implemented: vehicle data form, explicit save action, multipart POST /api/inspections, two inspection records, private image uploads, metadata persistence, success/error/loading UI.
+- User reports migration 001 already applied. Must now apply migration 002 after 001 before testing the new no-auth prototype persistence flow.
+- The save flow does not invoke AI. TASK-004 remains pending.
+- Frontend and backend automated checks have not been run in this session; record only actual local results.
 
 ## Next steps
-1. Complete TASK-001 security and environment verification.
-2. Implement TASK-003 upload/metadata API with authenticated ownership enforcement and connect UI.
-3. Implement TASK-004 Claude Vision comparison endpoint; render results in Fronted/.
+1. User applies migration 002 in Supabase and runs backend/frontend.
+2. Verify one complete vehicle + baseline/current photo submission and inspect rows/Storage objects.
+3. Fix any runtime or SQL errors based on actual logs.
+4. Implement TASK-004 Claude Vision comparison endpoint after persistence is confirmed.
