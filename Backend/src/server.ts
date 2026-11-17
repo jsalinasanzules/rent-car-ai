@@ -1,6 +1,7 @@
-import { env } from "./config/env.js";
+import { getEnv } from "./config/env.js";
 import { buildApp } from "./app.js";
 
+const env = getEnv();
 const app = await buildApp();
 
 try {
