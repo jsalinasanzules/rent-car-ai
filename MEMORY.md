@@ -5,9 +5,8 @@ Last updated: 2026-11-16
 ## Confirmed decisions
 - Frontend: React + TypeScript + Vite, all files under `Fronted/` (exact spelling).
 - Backend: separate Node.js + TypeScript HTTP API, all files under `Backend/`.
-- Shared docs at `docs/`; AI tasks under `.blueprint/tasks/`; project-level instructions and memory at root.
-- Do not place frontend/backend implementation files at repository root.
-- Supabase PostgreSQL and private Supabase Storage.
+- Backend framework: Fastify 5; environment validation: Zod; tests: Vitest.
+- Database: Supabase PostgreSQL; files: private Supabase Storage.
 - Backend connects to Supabase through server-side environment variables.
 - Claude Vision is called only by the Node.js backend using server-side ANTHROPIC_API_KEY and configurable CLAUDE_MODEL.
 - Frontend exposes VITE_API_BASE_URL only.
@@ -29,18 +28,17 @@ Last updated: 2026-11-16
 - Reject arbitrary external image URLs.
 - Preserve original photos.
 - Do not fake upload or analysis success while backend is absent.
+- The Supabase service-role client bypasses RLS; every backend data route must authenticate callers and enforce owner/tenant checks independently.
+- Do not enable real-user routes until the authentication and tenant/owner model is agreed and cross-owner access tests pass.
 
 ## Current progress
-- Project instructions, architecture, task board, and task files updated to enforce Fronted/ and Backend/ boundaries.
-- Initial React frontend implementation is being relocated from root into Fronted/.
-- Frontend supports baseline/current multi-file selection, local previews, zone assignment, replace confirmation, remove, validation, matching-zone indicators, and responsive layout.
-- Compare button is deliberately disabled until backend integration exists.
-- Automated build/type-check/tests have not been run; verify in a local checkout before marking TASK-002 Done.
-- Backend upload, persistence, and Claude analysis are not implemented yet.
+- TASK-002 frontend photo selector is marked Done based on the user's confirmation that the verification item is resolved; individual command output was not captured in this session.
+- TASK-001 backend scaffold created under Backend/: Fastify API, Zod config validation, Supabase server client, initial migration, private Storage bucket definition, health endpoint, error handler, lint/typecheck/test/build scripts and starter tests.
+- TASK-001 remains In Progress: migration still needs applying to the actual Supabase project; RLS/Storage boundaries and API owner checks need integration testing; authentication/tenant model needs confirmation; backend checks need execution in a local checkout.
+- TASK-003 remains blocked pending TASK-001 security gates.
+- Compare button remains deliberately disabled until backend integration exists.
 
 ## Next steps
-1. Verify Fronted app with npm install and npm run build.
-2. Complete TASK-002 with actual verification evidence.
-3. Implement TASK-001 under Backend/: Node.js backend and Supabase schema/private bucket.
-4. Implement TASK-003 under Backend/: upload/metadata API and connect UI.
-5. Implement TASK-004 under Backend/: Claude Vision comparison endpoint; render results in Fronted/.
+1. Complete TASK-001 security and environment verification.
+2. Implement TASK-003 upload/metadata API with authenticated ownership enforcement and connect UI.
+3. Implement TASK-004 Claude Vision comparison endpoint; render results in Fronted/.
