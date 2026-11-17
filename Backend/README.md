@@ -63,7 +63,7 @@ Gemini is the default provider for low-cost prototype testing. Create an API key
 ```env
 AI_PROVIDER=gemini
 GEMINI_API_KEY=your-google-ai-studio-api-key
-GEMINI_MODEL=gemini-2.5-flash-lite
+GEMINI_MODEL=gemini-3.5-flash-lite
 ```
 
 To use the existing paid Claude integration instead, set `AI_PROVIDER=claude` and configure `ANTHROPIC_API_KEY` plus `CLAUDE_MODEL`.
