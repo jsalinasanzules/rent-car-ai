@@ -113,32 +113,35 @@ export async function registerInspectionRoutes(app: FastifyInstance): Promise<vo
     }
     if (!selected) return reply.code(404).send({ error: "INSPECTION_NOT_FOUND", message: "No inspection was found with that ID." });
 
-    const { data: comparison, error: comparisonError } = await supabase
-      .from("comparisons")
-      .select("id, baseline_inspection_id, current_inspection_id, status, overall_result, summary, model, prompt_version, input_tokens, output_tokens, created_at, completed_at")
-      .or(`baseline_inspection_id.eq.${inspectionId},current_inspection_id.eq.${inspectionId}`)
-      .order("created_at", { ascending: false })
-      .limit(1)
-      .maybeSingle();
-    if (comparisonError) {
-      request.log.error({ err: comparisonError }, "Could not load saved AI comparison");
-      return reply.code(500).send({ error: "COMPARISON_LOOKUP_FAILED", message: "Unable to retrieve the saved AI result." });
-    }
-
     const { data: savedPair, error: savedPairError } = await supabase
       .from("inspection_pairs")
       .select("baseline_inspection_id, current_inspection_id")
       .or(`baseline_inspection_id.eq.${inspectionId},current_inspection_id.eq.${inspectionId}`)
+      .order("created_at", { ascending: false })
+      .limit(1)
       .maybeSingle();
     if (savedPairError) {
       request.log.error({ err: savedPairError }, "Could not load saved inspection pair");
       return reply.code(500).send({ error: "INSPECTION_PAIR_LOOKUP_FAILED", message: "Unable to retrieve the related inspection." });
     }
-    const ids = comparison
-      ? [comparison.baseline_inspection_id, comparison.current_inspection_id]
-      : savedPair
-        ? [savedPair.baseline_inspection_id, savedPair.current_inspection_id]
-        : [selected.id];
+
+    const { data: comparison, error: comparisonError } = savedPair
+      ? await supabase.from("comparisons")
+          .select("id, baseline_inspection_id, current_inspection_id, status, overall_result, summary, model, prompt_version, input_tokens, output_tokens, created_at, completed_at")
+          .eq("baseline_inspection_id", savedPair.baseline_inspection_id)
+          .eq("current_inspection_id", savedPair.current_inspection_id)
+          .order("created_at", { ascending: false })
+          .limit(1)
+          .maybeSingle()
+      : { data: null, error: null };
+    if (comparisonError) {
+      request.log.error({ err: comparisonError }, "Could not load saved AI comparison");
+      return reply.code(500).send({ error: "COMPARISON_LOOKUP_FAILED", message: "Unable to retrieve the saved AI result." });
+    }
+
+    const ids = savedPair
+      ? [savedPair.baseline_inspection_id, savedPair.current_inspection_id]
+      : [selected.id];
     const [{ data: inspections, error: pairError }, { data: imageRows, error: imagesError }] = await Promise.all([
       supabase.from("inspections").select("id, vehicle_id, inspection_type, inspected_at, status").in("id", ids),
       supabase.from("inspection_images").select("id, inspection_id, zone, storage_bucket, storage_path, original_filename, mime_type, size_bytes").in("inspection_id", ids).order("created_at"),
