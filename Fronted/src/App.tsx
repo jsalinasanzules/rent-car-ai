@@ -251,6 +251,7 @@ function App() {
     setNotice("");
     const formData = new FormData();
     const serializePhotos = (photos: Photo[], side: Side) => photos.map((photo) => {
+      if (!photo.file) throw new Error("A new inspection photo is missing its local file.");
       const fileField = `${side}__${photo.id}`;
       formData.append(fileField, photo.file, photo.file.name);
       return { zone: photo.zone, fileField };
