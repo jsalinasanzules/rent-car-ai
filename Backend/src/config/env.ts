@@ -9,7 +9,7 @@ const envSchema = z.object({
   CORS_ORIGIN: z.string().url().default("http://localhost:5173"),
   AI_PROVIDER: z.enum(["gemini", "claude"]).default("gemini"),
   GEMINI_API_KEY: z.string().min(1).optional(),
-  GEMINI_MODEL: z.string().min(1).default("gemini-2.5-flash-lite"),
+  GEMINI_MODEL: z.string().min(1).default("gemini-3.5-flash-lite"),
   ANTHROPIC_API_KEY: z.string().min(1).optional(),
   CLAUDE_MODEL: z.string().min(1).optional(),
 });
