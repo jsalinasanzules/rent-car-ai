@@ -6,6 +6,7 @@ Current milestone: Vehicle photo comparison prototype.
 - [x] TASK-002 — Frontend: React + TypeScript multi-photo selector — Done (verification confirmed by user). Details: .blueprint/tasks/TASK-002-frontend-photo-selector.md
 - [x] TASK-003 — Backend integration: persist vehicle details, inspections and photo uploads — Done (user confirmed records and photos are saved). Details: .blueprint/tasks/TASK-003-supabase-integration.md
 - [ ] TASK-004 — Backend AI: Vision comparison (Gemini default, Claude optional) — In Progress (provider integration committed to feature branch; migration 003 and live verification pending). Details: .blueprint/tasks/TASK-004-claude-vision-comparison.md
+- [ ] TASK-005 — Reuse a saved inspection as a new comparison baseline — In Progress (API and frontend flow implemented; build/runtime/Supabase verification pending). Details: .blueprint/tasks/TASK-005-reuse-saved-inspection.md
 
 ## Directory rules
 - Frontend implementation and configuration: `Fronted/`.
