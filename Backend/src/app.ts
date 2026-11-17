@@ -1,8 +1,9 @@
 import cors from "@fastify/cors";
 import Fastify, { type FastifyInstance } from "fastify";
-import { env } from "./config/env.js";
+import { getEnv } from "./config/env.js";
 
 export async function buildApp(): Promise<FastifyInstance> {
+  const env = getEnv();
   const app = Fastify({
     logger: env.NODE_ENV !== "test",
     bodyLimit: 15 * 1024 * 1024,
