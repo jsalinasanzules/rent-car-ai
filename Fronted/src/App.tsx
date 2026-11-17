@@ -27,6 +27,18 @@ type VehicleForm = {
   vin: string;
 };
 
+type ComparisonResult = {
+  comparisonId: string;
+  status: "COMPLETED";
+  result: "NEW_DAMAGE" | "NO_CHANGE" | "INCONCLUSIVE";
+  summary: string;
+  model: string;
+  usage: { inputTokens: number; outputTokens: number };
+  zones: Array<{ zone: string; result: string; summary: string }>;
+  findings: Array<{ id: string; zone: string; finding_type: string; location_description: string; description: string; severity: string; confidence: number; requires_human_review: boolean }>;
+  requiresHumanReview: boolean;
+};
+
 type SaveResult = {
   vehicleId: string;
   inspections: { baseline: string; current: string };
@@ -62,6 +74,8 @@ function App() {
   const [notice, setNotice] = useState("");
   const [saving, setSaving] = useState(false);
   const [savedResult, setSavedResult] = useState<SaveResult | null>(null);
+  const [comparison, setComparison] = useState<ComparisonResult | null>(null);
+  const [comparing, setComparing] = useState(false);
   const baselineInput = useRef<HTMLInputElement>(null);
   const currentInput = useRef<HTMLInputElement>(null);
   const photosRef = useRef<Photo[]>([]);
@@ -149,6 +163,31 @@ function App() {
 
   function openPicker(side: Side) {
     (side === "baseline" ? baselineInput : currentInput).current?.click();
+  }
+
+  async function runComparison() {
+    if (!savedResult || comparing) return;
+    setComparing(true);
+    setNotice("");
+    setComparison(null);
+    try {
+      const response = await fetch(`${API_BASE_URL}/comparisons`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          baselineInspectionId: savedResult.inspections.baseline,
+          currentInspectionId: savedResult.inspections.current,
+        }),
+      });
+      const data = await response.json() as ComparisonResult & { error?: string; message?: string };
+      if (!response.ok) throw new Error(data.message || data.error || "No fue posible comparar las fotografías.");
+      setComparison(data);
+      setNotice("Análisis de Claude Vision completado. Revise los hallazgos antes de tomar decisiones.");
+    } catch (error) {
+      setNotice(error instanceof Error ? error.message : "No fue posible completar el análisis con IA.");
+    } finally {
+      setComparing(false);
+    }
   }
 
   async function saveInspections() {
@@ -356,6 +395,39 @@ function App() {
           <div><strong>Análisis con Claude Vision</strong><p>Primero se guardan los originales y sus metadatos. El análisis de daños será el siguiente paso.</p></div>
           <span className="coming-soon">SIGUIENTE ETAPA</span>
         </section>
+
+        {comparison && (
+          <section className="matching-section ai-results">
+            <div className="matching-heading">
+              <div className="matching-icon"><Sparkles size={18} /></div>
+              <div>
+                <h2>Resultado del análisis</h2>
+                <p>{comparison.result === "NEW_DAMAGE" ? "Se detectaron posibles daños nuevos." : comparison.result === "NO_CHANGE" ? "No se identificaron daños nuevos visibles." : "No fue posible llegar a una conclusión fiable."}</p>
+              </div>
+              <span className="match-count">{comparison.result.replace("_", " ")}</span>
+            </div>
+            <p className="ai-summary">{comparison.summary}</p>
+            <div className="matched-list">
+              {comparison.zones.map((zone) => (
+                <span className="matched-chip" key={zone.zone}>{ZONES.find((item) => item.value === zone.zone)?.label ?? zone.zone}: {zone.result.replace("_", " ")}</span>
+              ))}
+            </div>
+            {comparison.findings.length > 0 && (
+              <div className="ai-findings">
+                <h3>Hallazgos para revisión humana</h3>
+                {comparison.findings.map((finding) => (
+                  <article className="ai-finding" key={finding.id}>
+                    <strong>{finding.finding_type} · {ZONES.find((item) => item.value === finding.zone)?.label ?? finding.zone}</strong>
+                    <span>{finding.location_description}</span>
+                    <p>{finding.description}</p>
+                    <small>Severidad: {finding.severity} · Confianza estimada: {Math.round(finding.confidence * 100)}% · Requiere revisión humana</small>
+                  </article>
+                ))}
+              </div>
+            )}
+            <p className="ai-disclaimer">La IA puede equivocarse. La confianza no está calibrada y todos los hallazgos requieren revisión humana. Modelo: {comparison.model} · Tokens: {comparison.usage.inputTokens} entrada / {comparison.usage.outputTokens} salida.</p>
+          </section>
+        )}
 
         <footer className="page-actions">
           <span className="local-disclaimer">
