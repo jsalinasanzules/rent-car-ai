@@ -1,7 +1,6 @@
 -- Prototype mode: the operator is not authenticated yet.
 -- Allow owner_id to be NULL so the trusted service-role API can persist
--- prototype records. RLS remains enabled; authenticated direct access only
--- sees rows owned by auth.uid(), while the Node API uses its private key.
+-- prototype records. RLS remains enabled; direct anonymous access is not granted.
 -- Apply this migration AFTER 001_initial_schema.sql.
 
 alter table public.vehicles alter column owner_id drop not null;
@@ -9,6 +8,31 @@ alter table public.inspections alter column owner_id drop not null;
 alter table public.inspection_images alter column owner_id drop not null;
 alter table public.comparisons alter column owner_id drop not null;
 alter table public.comparison_findings alter column owner_id drop not null;
+
+-- Keep referential integrity when owner_id is NULL in prototype mode.
+do $$
+begin
+  if not exists (select 1 from pg_constraint where conname = 'inspections_vehicle_id_fk') then
+    alter table public.inspections add constraint inspections_vehicle_id_fk
+      foreign key (vehicle_id) references public.vehicles(id) on delete cascade;
+  end if;
+  if not exists (select 1 from pg_constraint where conname = 'inspection_images_inspection_id_fk') then
+    alter table public.inspection_images add constraint inspection_images_inspection_id_fk
+      foreign key (inspection_id) references public.inspections(id) on delete cascade;
+  end if;
+  if not exists (select 1 from pg_constraint where conname = 'comparisons_baseline_inspection_id_fk') then
+    alter table public.comparisons add constraint comparisons_baseline_inspection_id_fk
+      foreign key (baseline_inspection_id) references public.inspections(id) on delete cascade;
+  end if;
+  if not exists (select 1 from pg_constraint where conname = 'comparisons_current_inspection_id_fk') then
+    alter table public.comparisons add constraint comparisons_current_inspection_id_fk
+      foreign key (current_inspection_id) references public.inspections(id) on delete cascade;
+  end if;
+  if not exists (select 1 from pg_constraint where conname = 'comparison_findings_comparison_id_fk') then
+    alter table public.comparison_findings add constraint comparison_findings_comparison_id_fk
+      foreign key (comparison_id) references public.comparisons(id) on delete cascade;
+  end if;
+end $$;
 
 -- Align persisted zone identifiers with the React selector.
 alter table public.inspection_images
