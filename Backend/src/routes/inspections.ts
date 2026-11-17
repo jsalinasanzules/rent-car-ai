@@ -102,29 +102,54 @@ export async function registerInspectionRoutes(app: FastifyInstance): Promise<vo
       return reply.code(400).send({ error: "INVALID_INSPECTION_ID", message: "Enter a valid inspection ID." });
     }
     const supabase = getSupabaseClient();
-    const { data: inspection, error: inspectionError } = await supabase
+    const { data: selected, error: selectedError } = await supabase
       .from("inspections")
-      .select("id, vehicle_id, inspection_type, inspected_at, status")
+      .select("id, vehicle_id, inspection_type, inspected_at, status, owner_id")
       .eq("id", inspectionId)
       .maybeSingle();
-    if (inspectionError) {
-      request.log.error({ err: inspectionError }, "Could not load saved inspection");
+    if (selectedError) {
+      request.log.error({ err: selectedError }, "Could not load saved inspection");
       return reply.code(500).send({ error: "INSPECTION_LOOKUP_FAILED", message: "Unable to retrieve the saved inspection." });
     }
-    if (!inspection) {
-      return reply.code(404).send({ error: "INSPECTION_NOT_FOUND", message: "No inspection was found with that ID." });
+    if (!selected) return reply.code(404).send({ error: "INSPECTION_NOT_FOUND", message: "No inspection was found with that ID." });
+
+    const { data: comparison, error: comparisonError } = await supabase
+      .from("comparisons")
+      .select("id, baseline_inspection_id, current_inspection_id, status, overall_result, summary, model, prompt_version, input_tokens, output_tokens, created_at, completed_at")
+      .or(`baseline_inspection_id.eq.${inspectionId},current_inspection_id.eq.${inspectionId}`)
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    if (comparisonError) {
+      request.log.error({ err: comparisonError }, "Could not load saved AI comparison");
+      return reply.code(500).send({ error: "COMPARISON_LOOKUP_FAILED", message: "Unable to retrieve the saved AI result." });
     }
-    const [{ data: vehicle, error: vehicleError }, { data: images, error: imagesError }] = await Promise.all([
-      supabase.from("vehicles").select("id, make, model, model_year, license_plate, vin").eq("id", inspection.vehicle_id).single(),
-      supabase.from("inspection_images").select("id, zone, storage_bucket, storage_path, original_filename, mime_type, size_bytes").eq("inspection_id", inspectionId).order("created_at"),
+
+    const ids = comparison
+      ? [comparison.baseline_inspection_id, comparison.current_inspection_id]
+      : [selected.id];
+    const [{ data: inspections, error: pairError }, { data: imageRows, error: imagesError }] = await Promise.all([
+      supabase.from("inspections").select("id, vehicle_id, inspection_type, inspected_at, status").in("id", ids),
+      supabase.from("inspection_images").select("id, inspection_id, zone, storage_bucket, storage_path, original_filename, mime_type, size_bytes").in("inspection_id", ids).order("created_at"),
     ]);
-    if (vehicleError || imagesError || !vehicle) {
-      request.log.error({ err: vehicleError ?? imagesError }, "Could not load saved inspection details");
+    if (pairError || imagesError) {
+      request.log.error({ err: pairError ?? imagesError }, "Could not load inspection pair");
       return reply.code(500).send({ error: "INSPECTION_DETAILS_FAILED", message: "Unable to retrieve the inspection details." });
     }
-    const photos = [];
-    for (const image of images ?? []) {
-      if (image.storage_bucket !== BUCKET || !image.storage_path.startsWith(`prototype/${inspection.vehicle_id}/`)) {
+    const pairRows = inspections ?? [];
+    const baselineRow = pairRows.find((item) => item.inspection_type === "BASELINE") ?? (selected.inspection_type === "BASELINE" ? selected : null);
+    const currentRow = pairRows.find((item) => item.inspection_type === "CURRENT") ?? null;
+    const vehicleId = selected.vehicle_id;
+    const { data: vehicle, error: vehicleError } = await supabase
+      .from("vehicles").select("id, make, model, model_year, license_plate, vin").eq("id", vehicleId).single();
+    if (vehicleError || !vehicle) {
+      request.log.error({ err: vehicleError }, "Could not load saved vehicle");
+      return reply.code(500).send({ error: "VEHICLE_LOOKUP_FAILED", message: "Unable to retrieve the vehicle details." });
+    }
+
+    const photos: Record<string, Array<Record<string, unknown>>> = { baseline: [], current: [] };
+    for (const image of imageRows ?? []) {
+      if (image.storage_bucket !== BUCKET || !image.storage_path.startsWith(`prototype/${vehicleId}/`)) {
         return reply.code(500).send({ error: "INVALID_STORED_IMAGE", message: "An inspection image has an invalid storage reference." });
       }
       const { data: signed, error: signedError } = await supabase.storage.from(BUCKET).createSignedUrl(image.storage_path, 3600);
@@ -132,19 +157,46 @@ export async function registerInspectionRoutes(app: FastifyInstance): Promise<vo
         request.log.error({ err: signedError }, "Could not create inspection image URL");
         return reply.code(502).send({ error: "IMAGE_ACCESS_FAILED", message: "Unable to access one of the saved inspection photos." });
       }
-      photos.push({
-        id: image.id,
-        zone: image.zone,
-        filename: image.original_filename,
-        mimeType: image.mime_type,
-        sizeBytes: Number(image.size_bytes),
-        url: signed.signedUrl,
+      const side = image.inspection_id === baselineRow?.id ? "baseline" : "current";
+      photos[side]!.push({
+        id: image.id, zone: image.zone, filename: image.original_filename,
+        mimeType: image.mime_type, sizeBytes: Number(image.size_bytes), url: signed.signedUrl,
       });
     }
+
+    let aiResult = null;
+    if (comparison) {
+      const [{ data: zones, error: zonesError }, { data: findings, error: findingsError }] = await Promise.all([
+        supabase.from("comparison_zone_results").select("zone, result, summary").eq("comparison_id", comparison.id).order("zone"),
+        supabase.from("comparison_findings").select("id, zone, finding_type, location_description, description, severity, confidence, requires_human_review").eq("comparison_id", comparison.id),
+      ]);
+      if (zonesError || findingsError) {
+        request.log.error({ err: zonesError ?? findingsError }, "Could not load saved AI findings");
+        return reply.code(500).send({ error: "AI_RESULT_LOOKUP_FAILED", message: "Unable to retrieve the saved AI findings." });
+      }
+      aiResult = {
+        comparisonId: comparison.id,
+        status: comparison.status,
+        result: comparison.overall_result,
+        summary: comparison.summary ?? "",
+        model: comparison.model ?? "",
+        usage: { inputTokens: comparison.input_tokens ?? 0, outputTokens: comparison.output_tokens ?? 0 },
+        zones: zones ?? [],
+        findings: findings ?? [],
+        requiresHumanReview: true,
+        createdAt: comparison.created_at,
+        completedAt: comparison.completed_at,
+      };
+    }
     return reply.send({
-      inspection: { id: inspection.id, type: inspection.inspection_type, inspectedAt: inspection.inspected_at, status: inspection.status },
+      selectedInspectionId: selected.id,
       vehicle: { id: vehicle.id, make: vehicle.make ?? "", model: vehicle.model ?? "", modelYear: vehicle.model_year, licensePlate: vehicle.license_plate ?? "", vin: vehicle.vin ?? "" },
+      inspections: {
+        baseline: baselineRow ? { id: baselineRow.id, type: baselineRow.inspection_type, inspectedAt: baselineRow.inspected_at, status: baselineRow.status } : null,
+        current: currentRow ? { id: currentRow.id, type: currentRow.inspection_type, inspectedAt: currentRow.inspected_at, status: currentRow.status } : null,
+      },
       photos,
+      comparison: aiResult,
     });
   });
 
