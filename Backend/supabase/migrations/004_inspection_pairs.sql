@@ -21,3 +21,9 @@ create index if not exists idx_inspection_pairs_current
 
 alter table public.inspection_pairs enable row level security;
 -- Access remains through the trusted backend service role.
+
+-- Backfill pairs for historical records that already have an AI comparison.
+insert into public.inspection_pairs (owner_id, baseline_inspection_id, current_inspection_id)
+select owner_id, baseline_inspection_id, current_inspection_id
+from public.comparisons
+on conflict (current_inspection_id) do nothing;
