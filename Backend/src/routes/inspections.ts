@@ -174,9 +174,10 @@ export async function registerInspectionRoutes(app: FastifyInstance): Promise<vo
       });
       if (new Set(photos.map((photo) => photo.zone)).size !== photos.length) throw new Error("Only one photo per vehicle area is allowed.");
       const { data: baseline, error: baselineError } = await supabase
-        .from("inspections").select("id, vehicle_id, owner_id").eq("id", baselineInspectionId).maybeSingle();
+        .from("inspections").select("id, vehicle_id, owner_id, inspection_type").eq("id", baselineInspectionId).maybeSingle();
       if (baselineError) throw baselineError;
       if (!baseline) return reply.code(404).send({ error: "INSPECTION_NOT_FOUND", message: "The selected baseline inspection was not found." });
+      if (baseline.inspection_type !== "BASELINE") return reply.code(400).send({ error: "INVALID_BASELINE_TYPE", message: "Only a BASELINE inspection can be reused as a reference." });
       const { data: baselineImages, error: baselineImagesError } = await supabase
         .from("inspection_images").select("zone").eq("inspection_id", baselineInspectionId);
       if (baselineImagesError) throw baselineImagesError;
