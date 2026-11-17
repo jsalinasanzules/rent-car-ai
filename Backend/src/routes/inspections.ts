@@ -125,7 +125,20 @@ export async function registerInspectionRoutes(app: FastifyInstance): Promise<vo
       return reply.code(500).send({ error: "COMPARISON_LOOKUP_FAILED", message: "Unable to retrieve the saved AI result." });
     }
 
+    const { data: savedPair, error: savedPairError } = await supabase
+      .from("inspection_pairs")
+      .select("baseline_inspection_id, current_inspection_id")
+      .or(`baseline_inspection_id.eq.${inspectionId},current_inspection_id.eq.${inspectionId}`)
+      .maybeSingle();
+    if (savedPairError) {
+      request.log.error({ err: savedPairError }, "Could not load saved inspection pair");
+      return reply.code(500).send({ error: "INSPECTION_PAIR_LOOKUP_FAILED", message: "Unable to retrieve the related inspection." });
+    }
     const ids = comparison
+      ? [comparison.baseline_inspection_id, comparison.current_inspection_id]
+      : savedPair
+        ? [savedPair.baseline_inspection_id, savedPair.current_inspection_id]
+        : [selected.id];
       ? [comparison.baseline_inspection_id, comparison.current_inspection_id]
       : [selected.id];
     const [{ data: inspections, error: pairError }, { data: imageRows, error: imagesError }] = await Promise.all([
