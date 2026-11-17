@@ -3,6 +3,7 @@ import multipart from "@fastify/multipart";
 import Fastify, { type FastifyInstance } from "fastify";
 import { getEnv } from "./config/env.js";
 import { registerInspectionRoutes } from "./routes/inspections.js";
+import { registerComparisonRoutes } from "./routes/comparisons.js";
 
 export async function buildApp(): Promise<FastifyInstance> {
   const env = getEnv();
@@ -25,6 +26,7 @@ export async function buildApp(): Promise<FastifyInstance> {
   }));
 
   await registerInspectionRoutes(app);
+  await registerComparisonRoutes(app);
 
   app.setErrorHandler((error, _request, reply) => {
     app.log.error({ err: error }, "Request failed");
