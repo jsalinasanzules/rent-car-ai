@@ -1,6 +1,6 @@
 # TASK-002 — Frontend: React + TypeScript Multi-Photo Selector
 
-**Status:** In Progress  
+**Status:** Done  
 **Priority:** High  
 **Stack:** React + TypeScript + Vite.
 
@@ -34,12 +34,11 @@ Build one responsive screen for selecting multiple vehicle photos for previous (
 - [x] Matching zones are identified.
 - [x] Compare remains disabled without backend integration.
 - [x] Responsive desktop/mobile layout and accessible native controls.
-- [ ] Run lint, type-check, tests, and production build; record actual results.
+- [x] Run lint, type-check, tests, and production build; verification confirmed by user.
 
 ## Verification evidence
-Implementation files are committed under `Fronted/`. Automated checks have **not** been run: this session could not clone/access a local working copy because the runtime has no network DNS access to GitHub. Do not mark this task Done until the repository is checked out and npm install/build/type-check are run.
+The user explicitly confirmed that the TASK-002 verification item is resolved. The detailed command output and individual pass/fail results were not available in this GitHub editing session, so this record reflects the user's confirmation and does not independently reproduce those checks here.
 
 ## Next work
-1. Run `npm install` and `npm run build` in a local checkout.
-2. Fix any compiler or browser issues discovered.
-3. Connect the UI after TASK-001 and TASK-003 provide the Node.js API contract.
+1. TASK-001 Node.js backend foundation and Supabase schema/private bucket.
+2. TASK-003 upload and metadata API; connect the frontend only after the API contract is ready.
