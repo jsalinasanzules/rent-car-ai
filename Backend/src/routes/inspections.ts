@@ -139,8 +139,6 @@ export async function registerInspectionRoutes(app: FastifyInstance): Promise<vo
       : savedPair
         ? [savedPair.baseline_inspection_id, savedPair.current_inspection_id]
         : [selected.id];
-      ? [comparison.baseline_inspection_id, comparison.current_inspection_id]
-      : [selected.id];
     const [{ data: inspections, error: pairError }, { data: imageRows, error: imagesError }] = await Promise.all([
       supabase.from("inspections").select("id, vehicle_id, inspection_type, inspected_at, status").in("id", ids),
       supabase.from("inspection_images").select("id, inspection_id, zone, storage_bucket, storage_path, original_filename, mime_type, size_bytes").in("inspection_id", ids).order("created_at"),
@@ -278,6 +276,12 @@ export async function registerInspectionRoutes(app: FastifyInstance): Promise<vo
         const { data: images, error: imageError } = await supabase.from("inspection_images").insert(rows)
           .select("id, inspection_id, zone, original_filename, mime_type, size_bytes, created_at");
         if (imageError) throw imageError;
+        const { error: pairError } = await supabase.from("inspection_pairs").insert({
+          baseline_inspection_id: baselineInspectionId,
+          current_inspection_id: current.id,
+          owner_id: baseline.owner_id,
+        });
+        if (pairError) throw pairError;
         return reply.code(201).send({
           status: "saved",
           vehicleId: baseline.vehicle_id,
@@ -399,6 +403,12 @@ export async function registerInspectionRoutes(app: FastifyInstance): Promise<vo
           .insert(imageRows)
           .select("id, inspection_id, zone, original_filename, mime_type, size_bytes, created_at");
         if (imagesError) throw imagesError;
+        const { error: pairError } = await supabase.from("inspection_pairs").insert({
+          baseline_inspection_id: inspections.baseline,
+          current_inspection_id: inspections.current,
+          owner_id: null,
+        });
+        if (pairError) throw pairError;
 
         return reply.code(201).send({
           status: "saved",
