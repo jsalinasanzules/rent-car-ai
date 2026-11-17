@@ -347,11 +347,11 @@ function App() {
             <div className="vehicle-meta"><span>ESTADO</span><strong className={savedResult ? "saved-state" : "draft-state"}><i /> {savedResult ? "Guardado" : "Borrador"}</strong></div>
           </div>
           <div className="vehicle-fields">
-            <label>Marca *<input value={vehicle.make} placeholder="Ej. Toyota" onChange={(e) => { setVehicle({ ...vehicle, make: e.target.value }); setSavedResult(null); }} /></label>
-            <label>Modelo *<input value={vehicle.model} placeholder="Ej. Corolla" onChange={(e) => { setVehicle({ ...vehicle, model: e.target.value }); setSavedResult(null); }} /></label>
-            <label>Año<input type="number" min="1886" max="2100" value={vehicle.modelYear} placeholder="2022" onChange={(e) => { setVehicle({ ...vehicle, modelYear: e.target.value }); setSavedResult(null); }} /></label>
-            <label>Placa<input value={vehicle.licensePlate} placeholder="ABC-1234" onChange={(e) => { setVehicle({ ...vehicle, licensePlate: e.target.value }); setSavedResult(null); }} /></label>
-            <label>VIN / Chasis<input value={vehicle.vin} placeholder="Número de chasis" onChange={(e) => { setVehicle({ ...vehicle, vin: e.target.value }); setSavedResult(null); }} /></label>
+            <label>Marca *<input value={vehicle.make} placeholder="Ej. Toyota" onChange={(e) => { setVehicle({ ...vehicle, make: e.target.value }); setSavedResult(null); setComparison(null); }} /></label>
+            <label>Modelo *<input value={vehicle.model} placeholder="Ej. Corolla" onChange={(e) => { setVehicle({ ...vehicle, model: e.target.value }); setSavedResult(null); setComparison(null); }} /></label>
+            <label>Año<input type="number" min="1886" max="2100" value={vehicle.modelYear} placeholder="2022" onChange={(e) => { setVehicle({ ...vehicle, modelYear: e.target.value }); setSavedResult(null); setComparison(null); }} /></label>
+            <label>Placa<input value={vehicle.licensePlate} placeholder="ABC-1234" onChange={(e) => { setVehicle({ ...vehicle, licensePlate: e.target.value }); setSavedResult(null); setComparison(null); }} /></label>
+            <label>VIN / Chasis<input value={vehicle.vin} placeholder="Número de chasis" onChange={(e) => { setVehicle({ ...vehicle, vin: e.target.value }); setSavedResult(null); setComparison(null); }} /></label>
           </div>
         </section>
 
