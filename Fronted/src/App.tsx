@@ -14,8 +14,11 @@ type Zone =
 
 type Photo = {
   id: string;
-  file: File;
+  file?: File;
   preview: string;
+  filename?: string;
+  sizeBytes?: number;
+  isSaved?: boolean;
   zone: Zone | "";
 };
 
@@ -75,6 +78,9 @@ function App() {
   const [saving, setSaving] = useState(false);
   const [savedResult, setSavedResult] = useState<SaveResult | null>(null);
   const [comparison, setComparison] = useState<ComparisonResult | null>(null);
+  const [inspectionId, setInspectionId] = useState("");
+  const [loadedBaselineId, setLoadedBaselineId] = useState<string | null>(null);
+  const [loadingInspection, setLoadingInspection] = useState(false);
   const [comparing, setComparing] = useState(false);
   const baselineInput = useRef<HTMLInputElement>(null);
   const currentInput = useRef<HTMLInputElement>(null);
@@ -101,7 +107,8 @@ function App() {
   const canSave = Boolean(
     vehicle.make.trim() && vehicle.model.trim() &&
     baseline.length > 0 && current.length > 0 &&
-    allAssigned && matchedZones.size > 0 && !saving && !savedResult
+    allAssigned && matchedZones.size > 0 && !saving && !savedResult &&
+    (loadedBaselineId ? current.every((photo) => Boolean(photo.file)) : allPhotos.every((photo) => Boolean(photo.file)))
   );
 
   function updateSide(side: Side, updater: (photos: Photo[]) => Photo[]) {
@@ -141,7 +148,7 @@ function App() {
   function removePhoto(side: Side, id: string) {
     updateSide(side, (photos) => {
       const removed = photos.find((photo) => photo.id === id);
-      if (removed) URL.revokeObjectURL(removed.preview);
+      if (removed?.file) URL.revokeObjectURL(removed.preview);
       return photos.filter((photo) => photo.id !== id);
     });
   }
@@ -152,7 +159,7 @@ function App() {
       if (value && occupied) {
         const label = ZONES.find((zone) => zone.value === value)?.label ?? value;
         if (!window.confirm(`A photo is already assigned to "${label}". Do you want to replace it?`)) return photos;
-        URL.revokeObjectURL(occupied.preview);
+        if (occupied.file) URL.revokeObjectURL(occupied.preview);
         return photos
           .filter((photo) => photo.id !== occupied.id)
           .map((photo) => photo.id === id ? { ...photo, zone: value } : photo);
@@ -163,6 +170,50 @@ function App() {
 
   function openPicker(side: Side) {
     (side === "baseline" ? baselineInput : currentInput).current?.click();
+  }
+
+  async function loadSavedInspection() {
+    const id = inspectionId.trim();
+    if (!id || loadingInspection) return;
+    setLoadingInspection(true);
+    setNotice("");
+    try {
+      const response = await fetch(`${API_BASE_URL}/inspections/${encodeURIComponent(id)}`);
+      const data = await response.json() as {
+        error?: string; message?: string;
+        inspection: { id: string; type: string; inspectedAt: string };
+        vehicle: { make: string; model: string; modelYear: number | null; licensePlate: string; vin: string };
+        photos: Array<{ id: string; zone: Zone; filename: string; mimeType: string; sizeBytes: number; url: string }>;
+      };
+      if (!response.ok) throw new Error(data.message || data.error || "Unable to load this inspection.");
+      if (data.inspection.type !== "BASELINE") throw new Error("This ID belongs to a CURRENT inspection. Please enter a BASELINE inspection ID.");
+      if (!data.photos.length) throw new Error("This inspection has no saved photos.");
+      const nextPhotos: Photo[] = data.photos.map((photo) => ({
+        id: photo.id,
+        preview: photo.url,
+        filename: photo.filename,
+        sizeBytes: photo.sizeBytes,
+        zone: photo.zone,
+        isSaved: true,
+      }));
+      setBaseline(nextPhotos);
+      setCurrent([]);
+      setVehicle({
+        make: data.vehicle.make,
+        model: data.vehicle.model,
+        modelYear: data.vehicle.modelYear ? String(data.vehicle.modelYear) : "",
+        licensePlate: data.vehicle.licensePlate,
+        vin: data.vehicle.vin,
+      });
+      setLoadedBaselineId(data.inspection.id);
+      setSavedResult(null);
+      setComparison(null);
+      setNotice(`Baseline inspection loaded · ${new Date(data.inspection.inspectedAt).toLocaleString()}. Add the new inspection photos to continue.`);
+    } catch (error) {
+      setNotice(error instanceof Error ? error.message : "Unable to load the saved inspection.");
+    } finally {
+      setLoadingInspection(false);
+    }
   }
 
   async function runComparison() {
@@ -205,21 +256,26 @@ function App() {
       return { zone: photo.zone, fileField };
     });
 
-    const payload = {
-      vehicle: {
-        make: vehicle.make.trim(),
-        model: vehicle.model.trim(),
-        modelYear: vehicle.modelYear ? Number(vehicle.modelYear) : null,
-        licensePlate: vehicle.licensePlate.trim(),
-        vin: vehicle.vin.trim(),
-      },
-      baseline: { photos: serializePhotos(baseline, "baseline") },
-      current: { photos: serializePhotos(current, "current") },
-    };
+    const payload = loadedBaselineId
+      ? { current: { photos: serializePhotos(current, "current") } }
+      : {
+          vehicle: {
+            make: vehicle.make.trim(),
+            model: vehicle.model.trim(),
+            modelYear: vehicle.modelYear ? Number(vehicle.modelYear) : null,
+            licensePlate: vehicle.licensePlate.trim(),
+            vin: vehicle.vin.trim(),
+          },
+          baseline: { photos: serializePhotos(baseline, "baseline") },
+          current: { photos: serializePhotos(current, "current") },
+        };
     formData.append("payload", JSON.stringify(payload));
 
     try {
-      const response = await fetch(`${API_BASE_URL}/inspections`, {
+      const endpoint = loadedBaselineId
+        ? `${API_BASE_URL}/inspections/${encodeURIComponent(loadedBaselineId)}/current`
+        : `${API_BASE_URL}/inspections`;
+      const response = await fetch(endpoint, {
         method: "POST",
         body: formData,
       });
@@ -239,14 +295,14 @@ function App() {
   const renderPhotoCard = (photo: Photo, side: Side) => (
     <article className="photo-card" key={photo.id}>
       <div className="photo-preview">
-        <img src={photo.preview} alt={photo.file.name} />
+        <img src={photo.preview} alt={photo.filename || photo.file?.name || "Inspection photo"} />
         <button className="icon-button remove-photo" onClick={() => removePhoto(side, photo.id)} aria-label="Remove photo" title="Remove">
           <Trash2 size={15} />
         </button>
-        <span className="photo-size">{(photo.file.size / 1024 / 1024).toFixed(1)} MB</span>
+        <span className="photo-size">{((photo.sizeBytes ?? photo.file?.size ?? 0) / 1024 / 1024).toFixed(1)} MB</span>
       </div>
       <div className="photo-details">
-        <p className="photo-name" title={photo.file.name}>{photo.file.name}</p>
+        <p className="photo-name" title={photo.filename || photo.file?.name}>{photo.filename || photo.file?.name}</p>
         <label className="field-label" htmlFor={`zone-${photo.id}`}>Vehicle area</label>
         <div className="select-wrap">
           <select
@@ -279,7 +335,7 @@ function App() {
               <h2>{title}</h2>
               <span className={`step-tag ${isBaseline ? "tag-muted" : "tag-blue"}`}>{isBaseline ? "01 · BASELINE" : "02 · CURRENT"}</span>
             </div>
-            <p>{subtitle}</p>
+            <p>{subtitle}{isBaseline && loadedBaselineId ? ` · Saved ID: ${loadedBaselineId}` : ""}</p>
           </div>
           <span className="photo-counter">{photos.length} photos</span>
         </div>
@@ -334,6 +390,20 @@ function App() {
             <p>Enter the vehicle details, save photos from both inspections, and then run the AI analysis.</p>
           </div>
           <div className="secure-note"><ShieldCheck size={17} /><span>Private images<br /><strong>Supabase storage</strong></span></div>
+        </section>
+
+        <section className="matching-section load-inspection">
+          <div className="matching-heading">
+            <div className="matching-icon"><Clock3 size={18} /></div>
+            <div><h2>Load saved inspection</h2><p>Use a previous inspection as the baseline for a new comparison.</p></div>
+          </div>
+          <div className="load-inspection-controls">
+            <input value={inspectionId} onChange={(event) => setInspectionId(event.target.value)} placeholder="Enter baseline Inspection ID" aria-label="Baseline inspection ID" />
+            <button className="add-more-button" onClick={() => void loadSavedInspection()} disabled={!inspectionId.trim() || loadingInspection}>
+              {loadingInspection ? "Loading..." : "Load inspection"}
+            </button>
+          </div>
+          {loadedBaselineId && <p className="loaded-baseline"><CheckCircle2 size={14} /> Baseline loaded: {loadedBaselineId}. Original photos are read-only.</p>}
         </section>
 
         <section className="vehicle-summary vehicle-form">
