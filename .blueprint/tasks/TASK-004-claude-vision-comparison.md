@@ -41,7 +41,7 @@ Anthropic key stays in Node.js backend environment. Frontend never calls Anthrop
 ## Implementation notes
 - `POST /api/comparisons` accepts only baseline/current inspection IDs; it never accepts arbitrary image URLs.
 - `AI_PROVIDER=gemini` selects Gemini (default); `AI_PROVIDER=claude` selects the existing Anthropic adapter.
-- Gemini model defaults to `gemini-2.5-flash-lite`; free-tier access and quotas are subject to Google's current terms. Do not send sensitive customer/vehicle images through the free tier without reviewing Google's data-use terms.
+- Gemini model defaults to `gemini-3.5-flash-lite`; free-tier access and quotas are subject to Google's current terms. Do not send sensitive customer/vehicle images through the free tier without reviewing Google's data-use terms.
 - The API checks same vehicle, inspection types, owner scope, matching zones, private bucket and expected object path.
 - Up to five matching zones are analyzed per request; each image is limited to 7 MB for Claude.
 - A unique baseline/current pair prevents paid duplicate inference. Failed runs are not automatically retried.
