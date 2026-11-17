@@ -420,10 +420,10 @@ function App() {
         <section className="matching-section load-inspection">
           <div className="matching-heading">
             <div className="matching-icon"><Clock3 size={18} /></div>
-            <div><h2>Load saved inspection</h2><p>Use a previous inspection as the baseline for a new comparison.</p></div>
+            <div><h2>Load saved inspection</h2><p>Load the full inspection pair and any saved AI analysis using either Inspection ID.</p></div>
           </div>
           <div className="load-inspection-controls">
-            <input value={inspectionId} onChange={(event) => setInspectionId(event.target.value)} placeholder="Enter baseline Inspection ID" aria-label="Baseline inspection ID" />
+            <input value={inspectionId} onChange={(event) => setInspectionId(event.target.value)} placeholder="Enter any Inspection ID (Baseline or Current)" aria-label="Baseline inspection ID" />
             <button className="add-more-button" onClick={() => void loadSavedInspection()} disabled={!inspectionId.trim() || loadingInspection}>
               {loadingInspection ? "Loading..." : "Load inspection"}
             </button>
