@@ -1,6 +1,7 @@
 -- Rent Car AI initial schema.
 -- RLS is enabled on every application table. Authenticated users can access
 -- only rows whose owner_id matches auth.uid(); anon has no table policies.
+-- Composite foreign keys prevent linking a row to another owner's parent.
 -- The Node API uses the service role, which bypasses RLS, so every API
 -- operation MUST independently authenticate the caller and enforce ownership.
 
@@ -15,25 +16,29 @@ create table if not exists public.vehicles (
   license_plate text,
   vin text,
   created_at timestamptz not null default now(),
-  updated_at timestamptz not null default now()
+  updated_at timestamptz not null default now(),
+  unique (id, owner_id)
 );
 
 create table if not exists public.inspections (
   id uuid primary key default gen_random_uuid(),
   owner_id uuid not null references auth.users(id) on delete cascade,
-  vehicle_id uuid not null references public.vehicles(id) on delete cascade,
+  vehicle_id uuid not null,
   inspection_type text not null check (inspection_type in ('BASELINE', 'CURRENT')),
   inspected_at timestamptz not null default now(),
   status text not null default 'DRAFT' check (status in ('DRAFT', 'COMPLETED')),
   notes text,
   created_at timestamptz not null default now(),
-  updated_at timestamptz not null default now()
+  updated_at timestamptz not null default now(),
+  unique (id, owner_id),
+  foreign key (vehicle_id, owner_id)
+    references public.vehicles(id, owner_id) on delete cascade
 );
 
 create table if not exists public.inspection_images (
   id uuid primary key default gen_random_uuid(),
   owner_id uuid not null references auth.users(id) on delete cascade,
-  inspection_id uuid not null references public.inspections(id) on delete cascade,
+  inspection_id uuid not null,
   zone text not null check (zone in (
     'front', 'rear', 'left-side', 'right-side',
     'front-left-corner', 'front-right-corner',
@@ -46,25 +51,32 @@ create table if not exists public.inspection_images (
   mime_type text not null check (mime_type in ('image/jpeg', 'image/png', 'image/webp')),
   size_bytes bigint not null check (size_bytes > 0 and size_bytes <= 12582912),
   created_at timestamptz not null default now(),
-  unique (inspection_id, zone)
+  unique (inspection_id, zone),
+  foreign key (inspection_id, owner_id)
+    references public.inspections(id, owner_id) on delete cascade
 );
 
 create table if not exists public.comparisons (
   id uuid primary key default gen_random_uuid(),
   owner_id uuid not null references auth.users(id) on delete cascade,
-  baseline_inspection_id uuid not null references public.inspections(id) on delete cascade,
-  current_inspection_id uuid not null references public.inspections(id) on delete cascade,
+  baseline_inspection_id uuid not null,
+  current_inspection_id uuid not null,
   status text not null default 'PENDING' check (status in ('PENDING', 'COMPLETED', 'FAILED')),
   overall_result text check (overall_result is null or overall_result in ('NEW_DAMAGE', 'NO_CHANGE', 'INCONCLUSIVE')),
   created_at timestamptz not null default now(),
   completed_at timestamptz,
-  check (baseline_inspection_id <> current_inspection_id)
+  unique (id, owner_id),
+  check (baseline_inspection_id <> current_inspection_id),
+  foreign key (baseline_inspection_id, owner_id)
+    references public.inspections(id, owner_id) on delete cascade,
+  foreign key (current_inspection_id, owner_id)
+    references public.inspections(id, owner_id) on delete cascade
 );
 
 create table if not exists public.comparison_findings (
   id uuid primary key default gen_random_uuid(),
   owner_id uuid not null references auth.users(id) on delete cascade,
-  comparison_id uuid not null references public.comparisons(id) on delete cascade,
+  comparison_id uuid not null,
   zone text not null,
   finding_type text not null,
   location_description text,
@@ -72,7 +84,9 @@ create table if not exists public.comparison_findings (
   severity text not null default 'UNKNOWN' check (severity in ('LOW', 'MEDIUM', 'HIGH', 'UNKNOWN')),
   confidence numeric(4,3) check (confidence is null or confidence between 0 and 1),
   requires_human_review boolean not null default true,
-  created_at timestamptz not null default now()
+  created_at timestamptz not null default now(),
+  foreign key (comparison_id, owner_id)
+    references public.comparisons(id, owner_id) on delete cascade
 );
 
 create index if not exists idx_vehicles_owner on public.vehicles(owner_id);
